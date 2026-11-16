@@ -3093,7 +3093,7 @@ codex_reviewed() { # round -> "<round> <sha>" or nothing
   done
 }
 
-run_codex_review() { # round -> 0 when nothing blocks; a critical or high finding blocks (LOOP.md)
+run_codex_review() { # round -> 0 when nothing blocks; a critical, high or medium finding blocks (LOOP.md)
   local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off prev rej
   base=$(cat "$RUN/base.sha")
   prev=$(codex_reviewed "$round")
@@ -3791,6 +3791,15 @@ cmd_run() {
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       gate_last && open_pr
+    # A round at the round cap whose graders finished at HEAD and failed, but crashed before open_pr wrote
+    # publish.intent: open the draft grade_round would have opened, with no worker round, as the cap allows none.
+    elif [ "$ROUND" -ge "$MAX_ROUNDS" ] && [ -s "$RUN/round-$ROUND.graded.sha" ] \
+      && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
+      && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
+      GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
+      log "round $ROUND, the last of $MAX_ROUNDS, failed its graders at HEAD $GRADED_SHA; opening the draft with no worker round"
+      check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
+      open_pr draft
     # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
     # a grader call) is graded now, so the relaunch does not pay for, or cap out on, a new worker round. HEAD may
     # have moved while the run was stopped, so its checks run again at HEAD first, and only a pass is graded.

@@ -68,6 +68,7 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("P8 ids = blocking ids", "            if sorted(ids) != sorted(blocking):", "            if False:"),
     ("P8 Codex blocking severities", 'BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high", "medium"}}',
      'BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}'),
+    ("P8 a Codex medium runs no reviewer", 'SERIOUS = {"critical", "high"}', 'SERIOUS = {"critical", "high", "medium"}'),
     ("P8 REJECTED evidence", '                elif verdict == "REJECTED" and not all(', '                elif False and all('),
     ("P8 UNVERIFIED fails", 'VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}', 'VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED", "UNVERIFIED"}'),
     ("audit3 C6 P8 verify.json sha", '            if verify.get("sha") != graded_sha:', '            if False:'),

@@ -132,6 +132,12 @@ class RelaunchPublishTests(unittest.TestCase):
         self.assertEqual((status, calls), ("pr-opened", 0))
         self.assertTrue(self.body().startswith("Draft: opened at the round cap with the graders still failing; the judge failed a."), self.body())
 
+    def test_a_cap_round_that_failed_its_graders_before_its_intent_opens_the_draft(self) -> None:
+        # The first launch's round 1, the cap, fails its graders and stops in open_pr before publish.intent is written.
+        status, calls = self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}")
+        self.assertEqual((status, calls), ("pr-opened", 0))
+        self.assertTrue(self.body().startswith("Draft: opened at the round cap with the graders still failing; the judge failed a."), self.body())
+
     def test_lost_publish_of_a_blocking_draft_publishes_the_draft_again(self) -> None:
         status, calls = self.relaunch(JUDGE_PASS, REVIEW_BLOCKING, first_stub=FIRST_PUSH_FAILS)
         self.assertEqual((status, calls), ("pr-opened", 0))
