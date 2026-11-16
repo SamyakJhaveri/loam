@@ -76,7 +76,7 @@ hyphenated pstack name.
                       exactly ["claude-fable-5-2"]; round-N.codex-review.json is a JSON object; the ids in
                       round-N.verify.json equal the blocking ids recomputed from round-N.review.json
                       (`reviewer-<i>`, severity high or medium) and round-N.codex-review.json (`codex-<i>`,
-                      critical or high), <i> the 0-based index in that file's .findings (a review file that is the
+                      critical, high or medium), <i> the 0-based index in that file's .findings (a review file that is the
                       supervisor's unparseable fallback fails as no review), and its sha is round-N.graded.sha's;
                       each verdict is CONFIRMED, PARTLY or REJECTED (UNVERIFIED, the supervisor's mark for a failed
                       verifier call, fails), and a REJECTED one has a non-empty cmd and output. A round with no
@@ -119,7 +119,8 @@ COVERED_PATH = re.compile(r"(?:^|/)(?:" + "|".join(re.escape(c) + ("" if c.endsw
 PLUGIN = "sam-cc-setup"
 LESSONS_VIEW = "# Factory lessons"
 FABLE = "claude-fable-5-2"
-BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
+BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high", "medium"}}
+SERIOUS = {"critical", "high"}  # a Codex finding of these runs the reviewer on a harness ticket (bin/factory graders)
 VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
 GIT_DIGESTS = ("git-head", "git-diff", "git-untracked")  # each `git-status:<dir>` digest line needs these too
 # A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <quote> | <decision>`,
@@ -1057,7 +1058,7 @@ def skip_refused(run: Run, n: int, earlier: list[int]) -> str:
     if (not isinstance(codex, dict) or codex.get("unparseable") is True or not isinstance(codex.get("verdict"), str)
             or not isinstance(codex.get("findings"), list)):
         return f"round-{n}.codex-review.json is no parsed Codex review"
-    if blocking_ids("codex", codex):
+    if any(isinstance(f, dict) and str(f.get("severity", "")).lower() in SERIOUS for f in codex["findings"]):
         return f"round-{n}.codex-review.json has a critical or high finding"
     if earlier:
         k = earlier[-1]

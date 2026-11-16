@@ -53,7 +53,6 @@ LOOP = """notify() { :; }
 alert() { :; }
 worker_round() { echo "$1" >> "$RUN/worker-rounds"; git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "round $1"; }
 ( cd "$RUN/frozen" && sha256_of * > sha256 )
-echo "GRADER_FAIL_ROUNDS=$GRADER_FAIL_ROUNDS" >&2
 main_loop
 """
 
@@ -142,17 +141,15 @@ class VerifierFixtureTests(unittest.TestCase):
         self.assertNotIn("--draft", creates[0])
         self.assertNotIn("Draft:", (self.run_dir / "pr-body.md").read_text())
 
-    def test_a_judge_that_never_passes_drafts_the_pr_at_the_grader_round_cap(self) -> None:
-        stderr = self.run_loop([JUDGE_FAIL] * 5)
-        cap = int(stderr.split("GRADER_FAIL_ROUNDS=", 1)[1].split()[0])
-        self.assertLess(cap, 5)
-        self.assertIn(f"grader-round cap: {cap} grader-fail rounds", (self.run_dir / "factory.log").read_text())
-        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after {cap} rounds", stderr)
-        self.assertEqual(self.counts(), (cap, cap))
+    def test_a_judge_that_never_passes_drafts_the_pr_at_the_round_cap(self) -> None:
+        stderr = self.run_loop([JUDGE_FAIL] * 4)   # MAX_ROUNDS is 4: every round gets its fixes, the last one drafts
+        self.assertIn("round cap: the graders still fail in round 4 of 4", (self.run_dir / "factory.log").read_text())
+        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 4 rounds", stderr)
+        self.assertEqual(self.counts(), (4, 4))
         creates = self.pr_creates()
         self.assertEqual(len(creates), 1, creates)
         self.assertIn("--draft", creates[0])
-        self.assertIn("Draft: opened at the grader-round cap; the judge failed widget.",
+        self.assertIn("Draft: opened at the round cap with the graders still failing; the judge failed widget.",
                       (self.run_dir / "pr-body.md").read_text())
 
 

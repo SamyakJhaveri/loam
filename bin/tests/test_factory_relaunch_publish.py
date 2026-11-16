@@ -37,11 +37,11 @@ STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen()
 JUDGE_PASS = """run_judge() { echo '{"verdict":"pass","rows":{}}' > "$RUN/round-$1.judge.json"; }"""
 JUDGE_FAIL = """run_judge() { echo '{"verdict":"fail","rows":{"a":"fail"}}' > "$RUN/round-$1.judge.json"; return 1; }"""
 REVIEW_CLEAN = """run_review() { echo '{"findings":[]}' > "$RUN/round-$1.review.json"; }"""
-# A high finding past the reviewer's one block: the graders pass and the PR would open as a draft.
+# A high finding the verifier (stubbed) queued no fix for: the graders pass and the PR would open as a draft.
 REVIEW_BLOCKING = ("""run_review() { echo '{"findings":[{"severity":"high","file":"f","line":1,"defect":"d","fix":"x"}]}'"""
                    """ > "$RUN/round-$1.review.json"; }""")
-# One grader-fail round reaches the grader-round cap, so a judge fail opens a draft at once.
-CAP_ONE = "GRADER_FAIL_ROUNDS=1"
+# A round cap of one round, so a judge fail opens a draft at once.
+CAP_ONE = "export FACTORY_MAX_ROUNDS=1"
 WORK = ("""worker_round() { [ -e "$WORKTREE/marker" ] && return 0; touch "$WORKTREE/marker"; git -C "$WORKTREE" add marker; """
         """git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q -m work; }; """)
 FIRST = WORK + """open_pr() { finish stopped-environment "git push of $BRANCH failed (stub)"; }"""
@@ -130,7 +130,13 @@ class RelaunchPublishTests(unittest.TestCase):
     def test_lost_publish_of_a_cap_draft_publishes_the_draft_again(self) -> None:
         status, calls = self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}", first_stub=FIRST_PUSH_FAILS)
         self.assertEqual((status, calls), ("pr-opened", 0))
-        self.assertTrue(self.body().startswith("Draft: opened at the grader-round cap; the judge failed a."), self.body())
+        self.assertTrue(self.body().startswith("Draft: opened at the round cap with the graders still failing; the judge failed a."), self.body())
+
+    def test_a_cap_round_that_failed_its_graders_before_its_intent_opens_the_draft(self) -> None:
+        # The first launch's round 1, the cap, fails its graders and stops in open_pr before publish.intent is written.
+        status, calls = self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}")
+        self.assertEqual((status, calls), ("pr-opened", 0))
+        self.assertTrue(self.body().startswith("Draft: opened at the round cap with the graders still failing; the judge failed a."), self.body())
 
     def test_lost_publish_of_a_blocking_draft_publishes_the_draft_again(self) -> None:
         status, calls = self.relaunch(JUDGE_PASS, REVIEW_BLOCKING, first_stub=FIRST_PUSH_FAILS)
@@ -200,8 +206,7 @@ class RelaunchPublishTests(unittest.TestCase):
         self.assertGreater(len((self.runs / "rl" / "relaunch-worker-calls").read_text().splitlines()), 0)
 
     def test_lost_publish_with_a_moved_head_resumes_into_a_worker_round(self) -> None:
-        self.assertGreater(self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}", move_head=True,
-                                         first_stub=FIRST_PUSH_FAILS)[1], 0)
+        self.assertGreater(self.relaunch(JUDGE_PASS, REVIEW_BLOCKING, move_head=True, first_stub=FIRST_PUSH_FAILS)[1], 0)
 
     def test_lost_publish_with_an_edited_frozen_set_stops_before_publishing(self) -> None:
         status, calls = self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}", edit_frozen=True,

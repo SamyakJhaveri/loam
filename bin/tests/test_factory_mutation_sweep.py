@@ -755,7 +755,7 @@ class FactoryRunTests(unittest.TestCase):
         first = self.body().splitlines()[0]
         self.assertTrue(first.startswith("Draft: the judge passed, but 5 blocking "), first)
         self.assertIn("The first is mutation [survived] ", first)
-        self.assertNotIn("grader-round cap", first)
+        self.assertNotIn("opened at the round cap", first)
 
     @needs_docker
     def test_survivors_reach_the_next_worker_round_then_a_ready_pr(self) -> None:

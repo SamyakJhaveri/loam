@@ -1,11 +1,12 @@
-"""A reviewer or Codex review past its one block that still blocks, or replies with nothing parseable, opens a draft PR.
+"""Each round's blocking reviewer or Codex finding goes to the next round, until a round is clean and opens a ready PR;
+one still blocking at the round cap, or a reply with nothing parseable, opens a draft PR.
 
 A Codex review with no parseable reply is called once more; two bad replies draft the PR but never reach a worker.
 A judge or reviewer with no parseable reply after its three calls never reaches a worker either (#312): the
-reviewer's finding drafts the PR without spending its one block, and the judge's opens the draft at once.
+reviewer's finding drafts the PR, and the judge's opens the draft at once.
 
-`bin/factory` is sourced (FACTORY_SOURCED=1) and two rounds run the loop's `graders "$ROUND" && open_pr` line with the
-real graders, call_json, run_codex_review, open_pr, and file_backlog. Fake `claude`, `codex`, and `gh` scripts sit
+`bin/factory` is sourced (FACTORY_SOURCED=1) and each round runs the loop's step 7, `grade_round`, with MAX_ROUNDS the
+number of rounds given and the real graders, call_json, run_codex_review, open_pr, and file_backlog. Fake `claude`, `codex`, and `gh` scripts sit
 on PATH: claude answers with the reply named in its prompt, codex logs its -o file, saves its prompt, and writes the
 reply for its call number (or nothing), and gh records its arguments and body. The worktree's origin is a local bare repository. No network.
 """
@@ -147,7 +148,7 @@ class CappedReviewTests(unittest.TestCase):
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
                  judges: list[object] | None = None, commits: dict[int, str] | None = None,
                  env_extra: dict[str, str] | None = None, rc: int = 0) -> tuple[str, list[dict]]:
-        """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
+        """Run one round per reply of `grade_round`, the last at the round cap; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
@@ -174,7 +175,7 @@ class CappedReviewTests(unittest.TestCase):
             'commit_for() { local p; p=$(cat "$RUN/commit.$1" 2> /dev/null) || return 0; mkdir -p "$WORKTREE/${p%/*}"\n'
             '  echo "round $1" >> "$WORKTREE/$p"; git -C "$WORKTREE" add -A\n'
             '  git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -qm "round $1 work"; }\n'
-            f'for ROUND in $(seq 1 {len(reviews)}); do commit_for "$ROUND"; graders "$ROUND" && open_pr; done\n'
+            f'MAX_ROUNDS={len(reviews)}; for ROUND in $(seq 1 {len(reviews)}); do commit_for "$ROUND"; grade_round; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
@@ -211,7 +212,29 @@ class CappedReviewTests(unittest.TestCase):
         self.assertIn(finding, issues[0]["body"])
         self.assertIn(PR_URL, issues[0]["body"])
 
-    def test_reviewer_past_its_one_block_opens_a_draft_and_files_the_finding(self) -> None:
+    def test_a_blocking_finding_opens_no_ready_pr_until_a_later_round_is_clean(self) -> None:
+        high = {"verdict": "fix", "findings": [review_finding("high", "first defect")]}
+        medium = {"verdict": "merge", "findings": [review_finding("medium", "second defect")]}
+        codex_medium = self.codex_finding("medium", "a codex defect")
+        # On a harness ticket a Codex medium blocks, though the reviewer runs only on a critical or high one.
+        harness = {"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"}
+        for name, reviews, codex, env, fixed in (
+            ("reviewer twice", [high, medium, CLEAN_REVIEW], None, {}, ["first defect", "second defect"]),
+            ("codex medium twice", [CLEAN_REVIEW] * 3, [codex_medium, codex_medium, json.dumps(CLEAN_CODEX)], harness,
+             ["a codex defect", "a codex defect"]),
+        ):
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop(reviews, codex=codex, commits={1: "bin/x", 2: "bin/x", 3: "bin/x"},
+                                              env_extra=env)
+                for k, finding in enumerate(fixed, start=1):
+                    self.assertIn(finding, self.fixes(k))
+                self.assertEqual((self.run_dir / "round-1.review.skipped").exists(), bool(env))
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 3 rounds", stderr)
+                self.assertNotIn("--draft", self.pr_create(calls)["args"])
+                self.assertEqual(self.issues(calls), [])
+
+    def test_a_finding_still_blocking_at_the_round_cap_opens_a_draft_and_is_filed(self) -> None:
         first_block = review_finding("high", "first defect")
         for name, second, finding in (
             ("unparseable", "this is not json", "reviewer output unparseable"),
@@ -373,7 +396,7 @@ class CappedReviewTests(unittest.TestCase):
                 self.assert_draft_with_filed_finding(stderr, calls, "reviewer output unparseable", rounds=1)
                 self.assertEqual(self.run_clean(), "no")
 
-    def test_an_unparseable_reviewer_does_not_spend_its_one_block(self) -> None:
+    def test_an_unparseable_reviewer_is_not_sent_to_the_worker_and_its_next_finding_is(self) -> None:
         for name, text in UNPARSEABLE:
             with self.subTest(name):
                 self.new_run()
@@ -506,10 +529,13 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertEqual(self.issues(calls), [])
 
 
-    def codex_high(self, title: str) -> str:
+    def codex_finding(self, severity: str, title: str) -> str:
         return json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [
-            {"severity": "high", "file": "bin/x", "line_start": 3, "line_end": 3, "confidence": 0.9, "title": title,
+            {"severity": severity, "file": "bin/x", "line_start": 3, "line_end": 3, "confidence": 0.9, "title": title,
              "body": "b", "recommendation": "r"}]})
+
+    def codex_high(self, title: str) -> str:
+        return self.codex_finding("high", title)
 
     def test_a_codex_re_review_reads_the_fix_delta_and_the_previous_findings(self) -> None:
         self.new_run()

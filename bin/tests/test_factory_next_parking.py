@@ -510,7 +510,7 @@ class ResumeTests(unittest.TestCase):
 
     def resume(self, graded: bool, checks_now: str = "PASS a", moved: bool = False, last: int = 6,
                earlier_graded: tuple[int, ...] = (), earlier_passed: tuple[int, ...] = (),
-               graders_pass: bool = True) -> tuple[str, str]:
+               graders_pass: bool = True, cap: int | None = None) -> tuple[str, str]:
         """(status, stdout) of cmd_run on a run whose last round of `last` passed its checks, its graders stubbed to
         pass or fail. checks_now is what the frozen checks print when run again; moved adds a clean commit after
         the last round; earlier_graded are rounds whose graders all ran and failed (no judge pass on disk);
@@ -540,7 +540,7 @@ class ResumeTests(unittest.TestCase):
         for n in earlier_passed:
             (run / f"round-{n}.judge.json").write_text('{"verdict": "pass", "rows": {}, "fixes": []}\n')
             (run / f"round-{n}.fixes").write_text("")
-        stubs = (f"MAX_ROUNDS={last}; GRADER_FAIL_ROUNDS=2; "
+        stubs = (f"MAX_ROUNDS={cap or last}; "
                  "assert_target_ready() { :; }; claude_version_ok() { :; }; "
                  'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
                  "nav_arm_resolve() { :; }; assert_parallel() { :; }; prepare_worktree() { :; }; freeze() { :; }; "
@@ -565,22 +565,20 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(status, "stopped-cap", out)
         self.assertNotIn("GRADED", out)
 
-    def test_earlier_grader_fail_rounds_count_after_a_relaunch(self) -> None:
-        # Round 1 failed its graders; round 2's graders were cut off, and on the relaunch they fail again: that is
-        # the second grader-fail round, so the PR opens as a draft instead of round 3 hitting the round cap.
+    def test_a_grader_fail_at_the_round_cap_after_a_relaunch_opens_a_draft(self) -> None:
+        # Round 1 failed its graders; round 2's graders were cut off, and on the relaunch they fail again in round 2,
+        # the last the cap allows, so the PR opens as a draft instead of round 3 hitting the round cap.
         status, out = self.resume(graded=False, last=2, earlier_graded=(1,), graders_pass=False)
         self.assertEqual(status, "pr-opened", out)
         self.assertIn("GRADED 2 running", out)
         self.assertIn("OPEN_PR draft", out)
         self.assertNotIn("WORKER", out)
 
-    def test_earlier_round_whose_graders_passed_is_not_a_grader_fail(self) -> None:
-        # Round 1 passed every grader and lost its PR create; round 2's graders were cut off and fail on the relaunch.
-        # That is the first grader-fail round, so no draft opens and the run resumes into the loop.
-        status, out = self.resume(graded=False, last=2, earlier_passed=(1,), graders_pass=False)
-        self.assertIn("GRADED 2 running", out)
-        self.assertNotIn("OPEN_PR", out)
-        self.assertEqual(status, "stopped-cap", out)
+    def test_a_grader_fail_below_the_round_cap_after_a_relaunch_takes_a_fix_round(self) -> None:
+        # Round 2's graders were cut off and fail on the relaunch, below the cap of 3: round 3 fixes, then drafts.
+        status, out = self.resume(graded=False, last=2, earlier_passed=(1,), graders_pass=False, cap=3)
+        self.assertEqual(out.splitlines(), ["GRADED 2 running", "WORKER 3", "GRADED 3 running", "OPEN_PR draft"], out)
+        self.assertEqual(status, "pr-opened", out)
 
     def test_round_whose_graders_finished_resumes_into_the_loop(self) -> None:
         status, out = self.resume(graded=True)

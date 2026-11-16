@@ -162,7 +162,7 @@ class ReviewTests(unittest.TestCase):
         self.put("round-1.review.json", review(("high", "real bug"), ("medium", "half bug"), ("medium", "made up"),
                                                ("low", "nit")))
         self.put("round-1.codex-review.json", codex(("critical", "invented crash"), ("high", "bare reject"),
-                                                    ("medium", "codex nit")))
+                                                    ("low", "codex nit")))
         self.replies({"findings": [
             verdict("reviewer-0", "CONFIRMED"), verdict("reviewer-1", "PARTLY", note="only the first half"),
             verdict("reviewer-2", "REJECTED", "python3 -c 'print(1)'", "1", note="src/a.py:5 handles it"),
@@ -212,7 +212,7 @@ class ReviewTests(unittest.TestCase):
 
     def test_no_blocking_finding_makes_no_call(self) -> None:
         self.put("round-1.review.json", review(("low", "nit")))
-        self.put("round-1.codex-review.json", codex(("medium", "codex nit")))
+        self.put("round-1.codex-review.json", codex(("low", "codex nit")))
         rc, err = self.verify()
         self.assertEqual(rc, 0, err)
         self.assertEqual(self.claude_calls(), [])
@@ -243,15 +243,25 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn("nit", fixes)
         self.assertEqual(len([a for a in self.alerts() if "UNVERIFIED" in a]), 1, self.alerts())
 
-    def test_each_source_blocks_once(self) -> None:
-        self.put("round-1.review.json", review(("high", "real bug")))
-        self.put("round-1.codex-review.json", codex(("high", "codex bug")))
-        self.replies({"findings": [verdict("reviewer-0", "CONFIRMED"), verdict("codex-0", "CONFIRMED")]})
-        rc, err = self.verify(preset="REVIEW_BLOCKED=1")
+    def test_a_codex_medium_blocks(self) -> None:
+        self.put("round-1.codex-review.json", codex(("medium", "codex medium"), ("low", "codex nit")))
+        self.replies({"findings": [verdict("codex-0", "CONFIRMED")]})
+        rc, err = self.verify()
         self.assertEqual(rc, 1, err)
-        fixes = self.read("round-1.fixes")
-        self.assertIn("codex bug", fixes)
-        self.assertNotIn("real bug", fixes)
+        self.assertIn("[medium] codex medium", self.read("round-1.fixes"))
+        self.assertNotIn("codex nit", self.read("round-1.fixes"))
+
+    def test_a_source_that_blocked_before_blocks_again_in_a_later_round(self) -> None:
+        for k, (rev, cdx) in enumerate((("real bug", "codex bug"), ("second bug", "second codex bug")), start=1):
+            self.put(f"round-{k}.review.json", review(("high", rev)))
+            self.put(f"round-{k}.codex-review.json", codex(("medium", cdx)))
+        self.replies(*[{"findings": [verdict("reviewer-0", "CONFIRMED"), verdict("codex-0", "CONFIRMED")]}] * 2)
+        proc = self.bash('verify_round 1; echo "rc1=$?"; verify_round 2; echo "rc2=$?"')
+        self.assertIn("rc1=1", proc.stdout, proc.stderr)
+        self.assertIn("rc2=1", proc.stdout, proc.stderr)
+        for k, words in ((1, ("real bug", "codex bug")), (2, ("second bug", "second codex bug"))):
+            for w in words:
+                self.assertIn(w, self.read(f"round-{k}.fixes"))
 
     def learn(self, **kw: str) -> subprocess.CompletedProcess:
         proc = self.bash('learn_run "$@"; echo "rc=$?"', **kw)

@@ -74,7 +74,7 @@ CASES = [
     ("p8-served", "P8", "FAIL"),  # W24's reviewer rows: served claude-opus-5-5
     ("p8-codex", "P8", "FAIL"),  # no round-1.codex-review.json (verify.json covers the reviewer's id only)
     ("p8-missing", "P8", "FAIL"),  # verify.json lacks blocking codex-1
-    ("p8-extra", "P8", "FAIL"),  # verify.json adds codex-2, a medium Codex finding, which does not block
+    ("p8-extra", "P8", "FAIL"),  # verify.json adds codex-4, an id no blocking finding has
     ("p8-rejected", "P8", "FAIL"),  # a REJECTED verdict with no cmd or output
     ("p8-unverified", "P8", "FAIL"),  # an UNVERIFIED verdict
 ]
@@ -251,11 +251,13 @@ def mark_skip(run: Path, n: int, paths: list[str]) -> None:
     (run / f"round-{n}.paths").write_text("".join(p + "\0" for p in paths))
 
 
-def skipped_reviewer(marked: bool, codex_clean: bool = True, paths: tuple[str, ...] = ("docs/a.md",)) -> Callable[[Path], None]:
+def skipped_reviewer(marked: bool, codex_clean: bool = True, paths: tuple[str, ...] = ("docs/a.md",),
+                     codex_medium: bool = False) -> Callable[[Path], None]:
     """PR 730: a harness round whose Codex review cleared it runs no reviewer: no reviewer row, review.json or verdict.
     With marked True, graders' round-1.review.skipped records the skip; without it the round lost its review. With
     codex_clean False the Codex high stays, and with a results path among paths the round is no harness round, so
-    graders could not have skipped the reviewer."""
+    graders could not have skipped the reviewer. With codex_medium the Codex review holds one medium finding, which
+    blocks (its verdict is in verify.json) but runs no reviewer."""
     def edit(run: Path) -> None:
         rows = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]
         (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows if r["role"] != "reviewer"))
@@ -266,6 +268,11 @@ def skipped_reviewer(marked: bool, codex_clean: bool = True, paths: tuple[str, .
         (run / "round-1.verify.json").write_text(json.dumps(verify))
         if codex_clean:
             (run / "round-1.codex-review.json").write_text(json.dumps({"verdict": "approve", "findings": []}))
+        if codex_medium:
+            (run / "round-1.codex-review.json").write_text(json.dumps({"verdict": "needs-attention", "findings": [
+                {"severity": "medium", "file": "docs/a.md", "line_start": 1, "title": "t"}]}))
+            verify["findings"] = [{"id": "codex-0", "verdict": "CONFIRMED", "cmd": "", "output": "", "note": ""}]
+            (run / "round-1.verify.json").write_text(json.dumps(verify))
         if marked:
             mark_skip(run, 1, list(paths))
     return edit
@@ -509,6 +516,7 @@ VARIANTS = [
     ("e-skipped-reviewer", "pass", skipped_reviewer(True), "P8", "PASS"),  # graders recorded the harness skip
     ("e-lost-reviewer", "pass", skipped_reviewer(False), "P8", "FAIL"),  # ... and without that record it is no review
     ("e-skip-on-codex-high", "pass", skipped_reviewer(True, codex_clean=False), "P8", "FAIL"),  # PR 730 Codex Medium
+    ("e-skip-on-codex-medium", "pass", skipped_reviewer(True, codex_medium=True), "P8", "PASS"),  # a medium blocks alone
     ("e-skip-with-reviewer-open", "pass", skip_after_open_reviewer, "P8", "FAIL"),
     ("e-skip-on-results-path", "pass", skipped_reviewer(True, paths=("docs/a.md", "bin/check")), "P8", "FAIL"),
     # P8 matches as bin/factory's bash =~ does, where $ never matches before a final newline (Codex at 9ec468c4)
