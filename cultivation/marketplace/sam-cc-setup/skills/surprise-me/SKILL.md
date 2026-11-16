@@ -48,8 +48,6 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    "commit for later" (frozen-artifact side, e.g. after a freeze lifts). An idea on the wrong side
    of the line becomes a named commitment, not an action.
 5. **Rank by goal-value per unit cost** and present as a table: `# | idea | when | owner | cost | deliverable`.
-   Count waiting as cost: each idea names the shared resources and queues it needs (a lock, a host, a landing
-   slot) and what it waits behind; an idea that queues behind the critical path is not free.
    Present the survivors; cut anything that does not beat the ideas above it.
    Say what the top idea improves over the default (quality, time, risk) and what it costs; if the
    default is still best, say so in one line.

@@ -21,7 +21,7 @@ There are no copies in `~/.claude/skills/`, so a pstack update reaches every age
 ## Who runs what
 
 The rule line, in `seed/docs/WORKERS.md.jinja` and `docs/RULES.md`:
-"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief."
+"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, leading or taking over a multi-agent operation, ruling on review findings or blockers, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief."
 
 | Who | How | Which skills |
 |-----|-----|--------------|
