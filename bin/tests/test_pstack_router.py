@@ -53,7 +53,7 @@ class PstackRouterTests(unittest.TestCase):
     def test_router_parses_to_a_table_and_a_principle_list(self) -> None:
         # Guards the drift test: a parse that found nothing would pass it vacuously.
         table, principles = router_names()
-        self.assertIn("principle-prove-it-works", table)
+        self.assertIn("principle-fix-root-causes", table)
         self.assertIn("interrogate", table)
         self.assertIn(SIBLING + "audit", table)
         self.assertGreaterEqual(len(principles), 20)

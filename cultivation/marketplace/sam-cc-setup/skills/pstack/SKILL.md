@@ -1,6 +1,6 @@
 ---
 name: pstack
-description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done."
+description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, leading or taking over a multi-agent operation, ruling on review findings or blockers, or calling work done."
 allowed-tools: Bash(bash *pstack-path.sh)
 ---
 pstack folder `<P>`: !`bash ${CLAUDE_SKILL_DIR}/pstack-path.sh`
@@ -35,12 +35,12 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | reflect (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
-| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
+| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | `<S>/correct` (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
 | Repeated manual steps or owner corrections to mine | automate-me (spawns; in an agent run, draft its output in the repo, never under `~/`) |
-| Before saying done | principle-prove-it-works |
+| Before saying done | `<S>/principle-prove-it-works` |
 
 Principles:
-- principle-attack-the-premise: two fixes on one premise failed
+- principle-attack-the-premise: two fixes on one premise failed, or a review finding returns as a narrower hole in the same check
 - principle-boundary-discipline: wiring validation, error handling or adapters
 - principle-build-the-lever: work a script could do or prove
 - principle-encode-lessons-in-structure: the same correction a second time
@@ -57,7 +57,7 @@ Principles:
 - principle-model-the-domain: stateful logic or heavily branching code
 - principle-never-block-on-the-human: tempted to ask about reversible work
 - principle-outcome-oriented-execution: planned rewrites and migrations in phases
-- principle-prove-it-works: before declaring done
+- principle-prove-it-works: before declaring done (read `<S>/principle-prove-it-works`)
 - principle-redesign-from-first-principles: a new requirement in an existing design
 - principle-separate-before-serializing-shared-state: concurrent writers to one file or key
 - principle-sequence-verifiable-units: multi-step work, stacked commits or PRs
