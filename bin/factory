@@ -2488,8 +2488,10 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # Another target's bin/check is its full gate, which the supervisor's checks run once after the round; a distbench
   # worker that ran it itself spent 109 of 117 minutes on it (L01, 13 Nov).
   target_is_loam || printf 'For this target, the supervisor runs the full gate, `bin/check`, once after your round, so never run `bin/check` yourself; prove your change with the focused tests for the code you touched.\n' >> "$pf"
-  # The Stop hook and the supervisor run the whole block; each check's base seconds show the worker which checks a
-  # focused run should leave out.
+  # A Claude worker's Stop hook (worker_cmd's frozen worker-settings.json) runs the whole block at every stop; a Codex
+  # worker has no Stop hook, so its prompt asks it to make that run itself, once, before it finishes.
+  [ "$WORKER_KIND" != codex ] || printf 'You have no Stop hook to run the done-checks block for you: before you finish, run it once from the worktree root as `LOAM_HOOK=1 bash %s/frozen/checks.sh`, under which `guard bin/check` passes without running, and fix every FAIL line you can. The supervisor runs it again after your round.\n' "$RUN" >> "$pf"
+  # Each check's base seconds show the worker which checks a focused run should leave out.
   [ ! -s "$RUN/round-0.times" ] || {
     printf '\n\n## Done-check seconds on base (round 0)\n\n'
     printf 'The whole block runs again after your round; while you work, run only the checks and focused tests your change touches. Seconds each check took on base, in block order:\n\n```\n'

@@ -38,7 +38,8 @@ class RoundZeroTimingTests(unittest.TestCase):
         shutil.copy(ROOT / "bin/factory.d/_common.md", self.run_dir / "frozen/_common.md")
 
     def round_one(self, hook_timeout: int) -> str:
-        """stdout of the real round_zero over BLOCK at the scratch repo's base, then round 1's worker prompt."""
+        """stdout of the real round_zero over BLOCK at the scratch repo's base, then round 1's prompt for a Claude worker
+        and for a Codex worker, each after a `PROMPT <kind>` line."""
         run = self.run_dir
         (run / "frozen/worker-settings.json").write_text(json.dumps(
             {"hooks": {"Stop": [{"hooks": [{"type": "command", "timeout": hook_timeout, "command": "true"}]}]}}))
@@ -48,12 +49,17 @@ class RoundZeroTimingTests(unittest.TestCase):
                   'BODY=$(cat "$RUN/issue.md"); git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"\n'
                   "{ cat bin/factory.d/lib.sh; echo; dc_block; echo; echo \"$CHECKS_END\"; echo 'exit $((n_fail > 0))'; }"
                   ' > "$RUN/frozen/checks.sh"; chmod +x "$RUN/frozen/checks.sh"\n'
-                  'round_zero; echo ROUND0-OK; WORKER_KIND=claude; round=1; cat "$(build_worker_prompt 1)"')
+                  'round_zero; echo ROUND0-OK; round=1\n'
+                  'for WORKER_KIND in claude codex; do echo "PROMPT $WORKER_KIND"; cat "$(build_worker_prompt 1)"; done')
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**os.environ, "FACTORY_SOURCED": "1", "HOME": str(self.tmp)},
                               capture_output=True, text=True, check=False, timeout=60)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
+
+    def prompts(self) -> dict[str, str]:
+        _, claude, codex = self.round_one(hook_timeout=30).split("ROUND0-OK\n", 1)[1].split("PROMPT ")
+        return {"claude": claude, "codex": codex}
 
     def times(self) -> list[tuple[int, str]]:
         rows = (self.run_dir / "round-0.times").read_text().split("\n")
@@ -77,15 +83,19 @@ class RoundZeroTimingTests(unittest.TestCase):
         self.assertGreaterEqual(secs["slow-a"], 2)
         self.assertGreaterEqual(secs["slow-b"], 2)
         self.assertLessEqual(secs["quick"], 1)
-        prompt = out.split("ROUND0-OK\n", 1)[1]
-        self.assertIn("## Done-check seconds on base (round 0)", prompt)
-        self.assertIn("".join(f"{s} {name}\n" for s, name in times), prompt)
+        for kind in ("claude", "codex"):
+            prompt = out.split(f"PROMPT {kind}\n", 1)[1].split("PROMPT ", 1)[0]
+            self.assertIn("## Done-check seconds on base (round 0)", prompt)
+            self.assertIn("".join(f"{s} {name}\n" for s, name in times), prompt)
 
-    def test_no_prompt_line_asks_the_worker_to_run_the_whole_block(self) -> None:
-        # The Stop hook runs the block at every stop; an order to run it as well ran it 3-5 times a round.
-        prompt = self.round_one(hook_timeout=30).split("ROUND0-OK\n", 1)[1]
-        self.assertNotIn("checks.sh", prompt)
-        self.assertNotRegex(prompt.lower(), r"run the done-checks block")
+    def test_only_a_worker_with_no_stop_hook_is_told_to_run_the_whole_block(self) -> None:
+        # A Claude worker's Stop hook runs the block at every stop; an order to run it as well ran it 3-5 times a round.
+        # A Codex worker has no Stop hook, so its prompt carries the one run the hook would make.
+        prompts = self.prompts()
+        self.assertNotIn("checks.sh", prompts["claude"])
+        (line,) = [line for line in prompts["codex"].splitlines() if "checks.sh" in line]
+        self.assertIn(f"`LOAM_HOOK=1 bash {self.run_dir}/frozen/checks.sh`", line)
+        self.assertIn("before you finish", line)
 
 
 if __name__ == "__main__":
