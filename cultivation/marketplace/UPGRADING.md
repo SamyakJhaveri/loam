@@ -3,18 +3,16 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.36 router fires for leads and rulings; owner copies of `correct` and `principle-prove-it-works`
+## sam-cc-setup v0.9.36 router fires for leads and rulings, and carries three reflect lessons
 
 From the distbench reflects of 16 Nov 2026, applied on Samyak's go-ahead of that morning.
 The router's description adds "leading or taking over a multi-agent operation, ruling on review findings or blockers": in ten hours of rulings a lead never called the router.
 Its `principle-attack-the-premise` line adds "or a review finding returns as a narrower hole in the same check" (four Codex rounds found ever narrower holes in one snapshot check until the mechanism was replaced).
-`correct` and `principle-prove-it-works` are now owner copies of pstack 0.15.36's skills beside the router (MIT, `LICENSE` in each folder), read as `<S>/<name>`.
-`correct`'s "Fix and prove" ranks classes by what their next occurrence would stop and whether they are live, then by frequency: a class that froze the factory for nine hours had been named and left out of the top fixes.
-`principle-prove-it-works` adds that a live process is not a working one: check progress, and never report a written claim that still matches as health (a status script printed PASS through a nine-hour deadlock).
-Its adapter link names `<P>/docs/harness/claude-code.md`, since the copy no longer sits inside the pstack folder.
+Its `correct` row adds: fix the classes in order of what their next occurrence would stop and whether they are live, then by frequency (a class that froze the factory for nine hours had been named and left out of the top fixes).
+Its `principle-prove-it-works` line adds that a live process is not a working one: check progress, and never report a written claim that still matches as health (a status script printed PASS through a nine-hour deadlock).
+Both lessons go in the router, not in copies of the pstack skills, since the owner's ruling of 27 Oct 2026 keeps pstack's skill text as its author ships it (`docs/RULES.md`).
 `surprise-me` step 5 counts waiting as cost: an idea that queues behind the critical path is not free.
 The sam-cc-setup listing grows from 408 to 430 tokens on the description's new words, and `bin/check`'s budget follows.
-`bin/tests/test_pstack_router.py`'s parse guard names `principle-fix-root-causes`, since the prove-it-works row is now an owner path.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
 

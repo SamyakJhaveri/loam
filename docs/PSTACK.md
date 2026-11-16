@@ -50,7 +50,7 @@ An agent without it does the delegated role itself in one context, `interrogate`
 - `/pstack:interrogate`: a multi-model review of a diff you do not trust; use it on a diff, not an abstract plan.
 - `/pstack:unslop`, `/pstack:technical-writing`, `/pstack:no-comments`: clean prose or comments.
 - `/pstack:reflect`, `/pstack:correct`: after a session, turn repeated mistakes into structure (architecture, then types or lint, then tests, docs last).
-  The router also gives agents `reflect`, `correct`, `automate-me` (output drafted in the repo, never under `~/`) and `architect`, and the owner skills `audit` and `surprise-me`, and the owner copies of `correct` and `principle-prove-it-works`, by path beside it.
+  The router also gives agents `reflect`, `correct`, `automate-me` (output drafted in the repo, never under `~/`) and `architect`, and the owner skills `audit` and `surprise-me` by path beside it.
 - `/pstack:ketchup`, `/pstack:ketchup-video`, `/pstack:bro`: catch up (the video version adds subtitled slides), or say the last message plainly.
 - `/pstack:statechart`: check a TLA+ model of a flow and draw it as a statechart, or show a bug as a path through states.
 - `/pstack:create-verification-skill`, `/pstack:create-formal-verification-skill`, `/pstack:maintain-verification-skill`: a project's proof skills.

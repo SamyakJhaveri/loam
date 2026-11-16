@@ -35,9 +35,9 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | reflect (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
-| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | `<S>/correct` (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
+| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last; fix the classes in order of what their next occurrence would stop and whether they are live now, then by frequency); principle-encode-lessons-in-structure |
 | Repeated manual steps or owner corrections to mine | automate-me (spawns; in an agent run, draft its output in the repo, never under `~/`) |
-| Before saying done | `<S>/principle-prove-it-works` |
+| Before saying done | principle-prove-it-works |
 
 Principles:
 - principle-attack-the-premise: two fixes on one premise failed, or a review finding returns as a narrower hole in the same check
@@ -57,7 +57,7 @@ Principles:
 - principle-model-the-domain: stateful logic or heavily branching code
 - principle-never-block-on-the-human: tempted to ask about reversible work
 - principle-outcome-oriented-execution: planned rewrites and migrations in phases
-- principle-prove-it-works: before declaring done (read `<S>/principle-prove-it-works`)
+- principle-prove-it-works: before declaring done; a live process is not a working one, so check progress (the last log line's age, a lock wait's length), and never report a written claim that still matches as health
 - principle-redesign-from-first-principles: a new requirement in an existing design
 - principle-separate-before-serializing-shared-state: concurrent writers to one file or key
 - principle-sequence-verifiable-units: multi-step work, stacked commits or PRs
