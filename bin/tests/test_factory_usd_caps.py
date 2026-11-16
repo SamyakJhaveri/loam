@@ -4,7 +4,7 @@
 calls bill an API key. The distbench F103 proof run had stopped `stopped-cap` at a notional "ticket budget: spent 6.86
 of 6 usd". Here `bin/factory` is sourced (FACTORY_SOURCED=1) and the real assert_caps and worker_cmd run over a ledger
 past every dollar cap a ticket written before then names, with no API key, with one in the environment, and with one
-in the user settings. The wall-clock cap still binds. notify is stubbed, so nothing alerts. No network, no model call.
+in the user settings. The hour cap still binds. notify is stubbed, so nothing alerts. No network, no model call.
 """
 
 from __future__ import annotations
@@ -62,12 +62,14 @@ class UsdCapTests(unittest.TestCase):
                 self.assertIn("NOT-STOPPED", proc.stdout, proc.stderr)
                 self.assertEqual(self.status(), "")
 
-    def test_the_wall_clock_cap_still_binds_a_subscription_run(self) -> None:
-        (self.run_dir / "launched").write_text(f"{int(time.time()) - 3 * 3600}\n")
+    def test_the_hour_cap_still_binds_a_subscription_run(self) -> None:
+        with (self.run_dir / "ledger.jsonl").open("a") as f:
+            f.write(json.dumps({"role": "worker", "duration_ms": 3 * 3600 * 1000,
+                                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}) + "\n")
         proc = self.sourced("MAX_HOURS=2; assert_caps; echo NOT-STOPPED")
         self.assertNotIn("NOT-STOPPED", proc.stdout)
         self.assertEqual(self.status(), "stopped-cap")
-        self.assertIn("wall clock: 3h of 2h", (self.run_dir / "factory.log").read_text())
+        self.assertIn("model time: 3h of 2h", (self.run_dir / "factory.log").read_text())
 
     def test_the_worker_call_carries_no_dollar_ceiling_on_an_api_key(self) -> None:
         script = "worker_cmd; printf '%s\\n' \"${WORKER_CMD[@]}\"\n"

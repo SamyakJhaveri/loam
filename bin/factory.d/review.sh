@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # bin/factory.d/review.sh - the verifier and the learn step, sourced by bin/factory from its frozen copy
 # (docs/research/2026-11-12-distbench-priming/design-pick.md, unit U4; requirements (d) and (h)). It uses bin/factory's own
-# helpers (call_start, call_end, charged, record, assert_caps, log, scrub, alert, codex_*), so it runs only sourced into it.
+# helpers (call_start, call_end, charged, record, cap_hit, log, scrub, alert, codex_*), so it runs only sourced into it.
 #
 #   verify_round ROUND  after the reviewer and the Codex review: one Opus call reproduces each blocking finding at
 #                       GRADED_SHA; CONFIRMED, PARTLY and UNVERIFIED go to round-N.fixes for the next round, every
@@ -138,7 +138,6 @@ verify_round() { # round -> 1 when it queued a fix
     log "verifier: no blocking finding in round $round; no call"
     return 0
   fi
-  assert_caps
   stop_requested && finish stopped "FACTORY_STOP before the verifier call"
   verify_findings "$fj" "$vj" "$WORKTREE" "$GRADED_SHA" "$round" \
     "it holds the ticket's change, the commits $(cat "$RUN/base.sha" 2> /dev/null | cut -c1-12)...$GRADED_SHA." \

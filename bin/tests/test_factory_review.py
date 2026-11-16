@@ -30,14 +30,18 @@ head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=Tr
 with log.open("a") as f:
     f.write(json.dumps({"argv": sys.argv[1:], "head": head, "prompt": sys.stdin.read()}) + "\\n")
 reply = d / ("claude-reply.%d" % n)
-if os.environ.get("FAKE_EXPIRE_AT") == str(n):   # this call ends 5 h after the launch
-    pathlib.Path(os.environ["FAKE_LAUNCHED"]).write_text("%d\\n" % (int(time.time()) - 5 * 3600))
 if not reply.exists():
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": ""}))
     sys.exit(1)
+hours = 5 if os.environ.get("FAKE_HOURS_AT") == str(n) else 0   # this call runs 5 h
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0.01,
-                  "result": reply.read_text(), "modelUsage": {}}))
+                  "duration_ms": hours * 3600 * 1000, "result": reply.read_text(), "modelUsage": {}}))
 """
+
+# A ledger row of a 5 h model call that ends now, or an hour ago.
+ROW_5H = """printf '{"role":"worker","duration_ms":18000000,"ts":"%s"}\\n' "$(END)" >> "$LEDGER" """
+BOOK_5H = ROW_5H.replace("END", "now")
+BOOK_5H_AGO = ROW_5H.replace("END", "date -u -d '1 hour ago' +%FT%TZ")
 
 FAKE_CODEX = """#!/usr/bin/env python3
 import os, pathlib, sys
@@ -279,7 +283,7 @@ class ReviewTests(unittest.TestCase):
     def test_the_hour_cap_stops_learn_calls(self) -> None:
         # learn runs after the exit; a run that stopped at MAX_HOURS spends no more time on learn (L01, 13 Nov 2026).
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
+        self.learn(preset=f"ROUND=1; MAX_HOURS=4; {BOOK_5H}")
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.fake / "codex-calls").exists())
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
@@ -287,19 +291,20 @@ class ReviewTests(unittest.TestCase):
     def test_a_cap_reached_during_the_learn_review_stops_the_codex_review(self) -> None:
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
         self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}, review())
-        self.learn(preset="ROUND=1; MAX_HOURS=4", FAKE_EXPIRE_AT="2", FAKE_LAUNCHED=str(self.run_dir / "launched"))
+        self.learn(preset="ROUND=1; MAX_HOURS=4", FAKE_HOURS_AT="2")
         self.assertEqual(len(self.claude_calls()), 2)
         self.assertFalse((self.fake / "codex-calls").exists())
 
-    def test_a_cap_reached_during_a_usage_limit_wait_stops_the_learn_retry(self) -> None:
-        # The writer's first reply is a usage limit; the account switch returns at once, but the clock is now past
-        # the cap, so learn makes no second call.
+    def test_a_usage_limit_wait_spends_none_of_the_cap(self) -> None:
+        # The writer's first reply is a usage limit, and the wait for its reset outlasts the 4 h cap; a wait is no
+        # model time, so learn calls the writer again and its draft goes to review.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
+        draft = {"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}
+        self.replies(draft, draft, review())
         self.learn(preset='ROUND=1; MAX_HOURS=4\nlimit_wait() { [ ! -e "$RUN/limited" ] || return 1; : > "$RUN/limited"; '
                           'echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"; }')
-        self.assertEqual(len(self.claude_calls()), 1)
-        self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
+        self.assertEqual(len(self.claude_calls()), 3)
+        self.assertTrue((self.run_dir / "learn" / "draft.md").exists())
 
     def test_a_killed_learn_call_books_a_no_result_row(self) -> None:
         # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; the ledger and
@@ -315,7 +320,7 @@ class ReviewTests(unittest.TestCase):
         # audit3 F3: launch 1 ends at its MAX_HOURS cap, so learn makes no call; launch 2 in the same run directory,
         # launched afresh, still drafts the run's one ticket.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
+        self.learn(preset=f'ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 2 * 3600 )) > "$RUN/launched"; {BOOK_5H_AGO}')
         self.assertEqual(self.claude_calls(), [])
         self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
         self.learn(preset="ROUND=1")
@@ -389,7 +394,7 @@ class ReviewTests(unittest.TestCase):
         # learn_run runs inside finish; a limit_wait finish there would replace the run's exit (pr-opened) with
         # stopped-environment.
         self.put("limit.json", {"type": "result", "is_error": True, "result": "You hit your limit · resets 3am (UTC)"})
-        body = ('limit_switch() { return 1; }; finish() { echo "FINISH $1"; exit 9; }; echo 0 > "$RUN/launched"\n'
+        body = ('limit_switch() { return 1; }; finish() { echo "FINISH $1"; exit 9; }; ' + BOOK_5H + '\n'
                 'MAX_HOURS=1 REVIEW_NO_FINISH={} limit_wait "$RUN/limit.json"; echo "rc=$?"')
         learn = self.bash(body.replace("{}", "1"))
         self.assertIn("rc=1", learn.stdout, learn.stderr)
