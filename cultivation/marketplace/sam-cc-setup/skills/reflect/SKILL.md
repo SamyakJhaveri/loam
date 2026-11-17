@@ -55,7 +55,7 @@ Never edit a skill under `~/.claude/plugins/cache/`. Before approval, show its d
 Follow each approved row's Routing exactly:
 
 - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
-- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): in Claude Code, which has no `create-skill`, edit the owner copy directly and validate it with the "skill and agent frontmatter + references" step of Loam's `bin/check`, which reads each SKILL.md, and `claude plugin validate --strict` on the marketplace folder.
+- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): in Claude Code, which has no `create-skill`, edit the owner copy directly, `git add` each new or changed SKILL.md and its support files (the check lists files with `git ls-files`, so an unstaged new skill is never checked), and validate it with the "skill and agent frontmatter + references" step of Loam's `bin/check`, which reads each SKILL.md, and `claude plugin validate --strict` on the marketplace folder.
 - `tune description: <skill path>` (the skill exists but didn't trigger when it should have): edit the description in the owner copy directly and validate it the same way.
 - `new skill via create-skill: <kebab-name>`: write it in `<S>/<kebab-name>/` in the shape of a skill beside it, and validate it the same way.
 
