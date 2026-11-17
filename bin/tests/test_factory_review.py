@@ -277,8 +277,8 @@ class ReviewTests(unittest.TestCase):
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
     def test_learn_runs_only_on_a_run_that_did_not_pass_its_first_round(self) -> None:
-        # A clean first-round pass skips learn, follow-ups or not. A round-1 draft whose graders failed at the cap, and
-        # a pass that needed a second worker round, still draft.
+        # A clean first-round pass skips learn, follow-ups or not. A round-1 draft whose graders failed at the cap (a
+        # queued fix, or a judge fail with only backlog), and a pass that needed a second worker round, still draft.
         for k in (1, 2):
             self.put(f"round-{k}.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
         self.put("status", "pr-opened\n")
@@ -289,8 +289,11 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.run_dir / "learn").exists())
         draft = {"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}
-        for k, (rounds, fixes) in enumerate(((1, "- [high] a.py:1 still broken\n"), (2, "")), start=1):
-            with self.subTest(rounds=rounds):
+        fail = {"verdict": "fail", "backlog": ["the gate ran serially"]}   # a judge fail may queue only backlog
+        for rounds, fixes, judge in ((1, "- [high] a.py:1 still broken\n", None), (1, "", fail), (2, "", None)):
+            with self.subTest(rounds=rounds, fixes=bool(fixes), judge=bool(judge)):
+                if judge:
+                    self.put("round-1.judge.json", judge)
                 (self.run_dir / "learn").mkdir(exist_ok=True)
                 (self.run_dir / "learn" / "ran").unlink(missing_ok=True)
                 (self.fake / "claude-calls.jsonl").unlink(missing_ok=True)
