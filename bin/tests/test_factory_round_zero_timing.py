@@ -94,6 +94,16 @@ class RoundZeroTimingTests(unittest.TestCase):
         finish = self.finish(self.round_one(hook_timeout=3, block='[ -z "${LOAM_HOOK:-}" ] || sleep 4; fail hook-slow "x"'))
         self.assertIn("ticket-defect: the done-checks block did not end within the worker Stop hook's 3 s", finish)
 
+    def test_a_child_left_holding_the_output_runs_the_block_to_the_stop_hook_timeout(self) -> None:
+        # The hook captures the block's output (`out=$(...)`), so it waits for a background child that holds it.
+        finish = self.finish(self.round_one(hook_timeout=3, block='( sleep 29 & ); fail bg "x"'))
+        self.assertIn("ticket-defect: the done-checks block did not end within the worker Stop hook's 3 s", finish)
+
+    def test_a_check_that_changes_the_worktree_is_judged_on_pristine_base(self) -> None:
+        # The check fails on a clean base and leaves a marker behind; a second run of the block on base would pass it.
+        out = self.round_one(hook_timeout=30, block='[ -e marker ] && pass marker || { touch marker; fail marker "absent"; }')
+        self.assertIn("ROUND0-OK", out)
+
     def test_a_codex_worker_with_no_stop_hook_is_not_held_to_its_timeout(self) -> None:
         self.assertIn("ROUND0-OK", self.round_one(hook_timeout=3, kind="codex", user_hook=False))
 
