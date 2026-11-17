@@ -3,6 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
+
+The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.
+principle-explain-the-number: when the run-to-run spread is larger than an eval's effect, the agent reports no measurable difference even where a preregistered rule would pick an arm, and it also rules out a ceiling, a judge rubric that rewards a defect, and contention on a shared host.
+reflect: each reviewer writes its findings to `<dir>/<lens>.md`, names the last transcript line it read and keeps live-state to-dos apart from learnings; reviewers start as agent slots free under the session's cap, and the synthesizer reads the three files and drops to-dos resolved after that line.
+Both came from the distbench /reflect of 16 November 2026, accepted by the owner on 17 November.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; type `/sam-cc-setup:reflect` for reflect.
+
 ## sam-cc-setup v0.9.37 three hooks: built-in agents, foreground sleeps, message times
 
 The plugin now installs hooks (`hooks/hooks.json`), so updating it changes what tool calls are allowed.
