@@ -3,6 +3,16 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.37 three hooks: built-in agents, foreground sleeps, message times
+
+The plugin now installs hooks (`hooks/hooks.json`), so updating it changes what tool calls are allowed.
+PreToolUse on `Agent` refuses `subagent_type` `general-purpose` (or none) and `Explore`, naming `worker` and `scout`; it refuses only when that replacement agent is defined in the user's or the project's `.claude/agents/`.
+PreToolUse on `Bash` refuses a foreground call that runs `sleep`, alone or in a `while` or `until` poll loop, naming `run_in_background`, a recorded job's waiter and the Monitor tool; a call with `run_in_background` passes, and so does `sleep` inside another command's arguments or a heredoc body.
+UserPromptSubmit adds the message's local and UTC time, and a "read <path> now" line for each `/pstack:<name>` the message names, found through `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/installed_plugins.json`.
+The two PreToolUse hooks are an exception to design law 3 (no hook on a tool matcher); the plugin README says why.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code (or run `/hooks`) so running sessions load the hooks.
+
 ## sam-cc-setup v0.9.35 pstack router and lean-critic lose words that misled
 
 The router's description said "before a non-trivial task", and models cited that word as their reason to skip the router on small fixes; it now says "before a task", as do the factory worker prompt (`bin/factory.d/_common.md`), the Workflow builders' prompt (`bin/factory.d/factory-round.js`) and the seed rule line.

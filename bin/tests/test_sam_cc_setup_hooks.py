@@ -104,6 +104,30 @@ class ForegroundSleepTest(unittest.TestCase):
     def test_background_call_passes(self) -> None:
         self.assertEqual(self.bash("sleep 30", run_in_background=True).returncode, 0)
 
+    def assert_refused(self, *commands: str) -> None:
+        for command in commands:
+            self.assertEqual(self.bash(command).returncode, 2, command)
+
+    def assert_allowed(self, *commands: str) -> None:
+        for command in commands:
+            self.assertEqual(self.bash(command).returncode, 0, command)
+
+    def test_sleep_in_command_substitution_refused(self) -> None:
+        self.assert_refused('echo "$(sleep 1)"', 'echo "x `sleep 1`"', "diff <(sleep 1; echo a) b")
+        self.assert_allowed("echo '$(sleep 1)'", 'echo "\\$(sleep 1)"')
+
+    def test_sleep_behind_leading_redirection_refused(self) -> None:
+        self.assert_refused(">out sleep 1", "2>/dev/null sleep 1", "make && </dev/null sleep 1")
+
+    def test_sleep_as_timeout_operand_with_options_refused(self) -> None:
+        self.assert_refused("timeout -s TERM 10 sleep 1", "timeout --kill-after 5 --signal KILL 10 sleep 1",
+                            "timeout -k 5s --preserve-status 10 sleep 1")
+
+    def test_sleep_only_in_heredoc_data_passes(self) -> None:
+        self.assert_allowed("cat <<A <<'B'\nx\nA\nuntil ready; do sleep 5; done\nB\nwc -l f",
+                            "cat <<A; cat <<-B\nx\nA\n\tsleep 5\n\tB\nwc -l f")
+        self.assert_refused("cat <<A <<B\nx\nA\ny\nB\nsleep 1")
+
 
 class PromptContextTest(Home):
     def prompt(self, text: str) -> str:
@@ -126,6 +150,17 @@ class PromptContextTest(Home):
         out = self.prompt("run /pstack:tdd, then /pstack:nope and /pstack:tdd again")
         self.assertEqual(out.count(f"read {skill} now"), 1, out)
         self.assertIn("/pstack:nope: no such pstack skill", out)
+
+    def test_pstack_found_through_config_dir_outside_home(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        config = pathlib.Path(tmp.name)
+        skill = self.write("pstack-cache/skills/tdd/SKILL.md")
+        installed = {"plugins": {"pstack@cursor-plugins": [{"installPath": str(self.home / "pstack-cache")}]}}
+        (config / "plugins").mkdir()
+        (config / "plugins/installed_plugins.json").write_text(json.dumps(installed), encoding="utf-8")
+        self.env["CLAUDE_CONFIG_DIR"] = str(config)
+        self.assertIn(f"read {skill} now", self.prompt("/pstack:tdd"))
 
     def test_no_pstack_install_reads_nothing_by_path(self) -> None:
         self.assertNotIn(" now, in full", self.prompt("/pstack:tdd"))
