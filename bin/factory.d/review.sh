@@ -240,8 +240,9 @@ learn_codex() { # dir prompt out -> 0 when out has text
 
 learn_run() { # [status message] -> 0; drafts at most one ticket per run directory
   local d="$RUN/learn" f="$RUN/followups.md" dir repo rdir sha model effort prompt n REVIEW_NO_FINISH=1
-  # Learn costs a writer and two reviews; a run that passed its first worker round leaves too little to learn from.
-  if [ "${1:-}" = pr-opened ] && [ "$ROUND" -le 1 ]; then log "learn: a clean first-round pass; skipped"; return 0; fi
+  # Learn costs a writer and two reviews; a clean pass (bin/factory's run_clean) in worker round 1 leaves too little to
+  # learn from. A queued grader fix, an unparseable grader, or an earlier exit such as a cap is not clean.
+  if [ "$ROUND" -le 1 ] && [ "$(run_clean "$RUN")" = yes ]; then log "learn: a clean first-round pass; skipped"; return 0; fi
   [ -e "$d/ran" ] && { log "learn: already ran for this run directory"; return 0; }
   mkdir -p "$d" || { log "learn: could not make $d"; return 0; }
   followups "$@" > "$f"
