@@ -8,9 +8,12 @@ single quotes, and inside a `bash -c` or `sh -c` script. Arguments of any other 
 `bin/tmux-job start NAME -- bash -c '... sleep ...'` runs its loop detached, and `bin/tmux-job wait`
 is the sanctioned foreground wait. Heredoc bodies are data too. A call with run_in_background passes.
 
-This is a scan for the forms an agent plausibly writes, not a shell parser. Known gaps, all allowed:
-`eval`, `xargs`, `find -exec` or a variable running sleep; a substitution inside an unquoted heredoc
-body; a redirection glued to a separator (`true;>x sleep 1`); sleep run by another language.
+This is a scan for the forms an agent plausibly writes, not a shell parser. Known gaps, all allowed
+(each is a bypass written on purpose, so Low): `eval`, `xargs`, `find -exec` or a variable running sleep;
+a wrapper option with an operand other than timeout's, nice's and env's `-u` (`stdbuf -o L sleep`,
+`env -C dir sleep`); a `)` inside quotes within `$(...)`; heredoc-looking text inside quotes
+(`echo '<<EOF'`) hiding the lines after it; a substitution inside an unquoted heredoc body;
+a redirection glued to a separator (`true;>x sleep 1`); sleep run by another language.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ OPTION_ARGS = {"-s", "--signal", "-k", "--kill-after", "-n", "--adjustment", "-u
 REDIRECT = {"<", ">", "<<", ">>", "<<<", "<&", ">&", "&>", "&>>", "<>", ">|"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
 NUMBER = re.compile(r"[0-9.]+[smhd]?")
-HEREDOC = re.compile(r"(?<!<)<<-?(?!<)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+HEREDOC = re.compile(r"""(?<!<)<<-?(?!<)\s*(?:'([^']+)'|"([^"]+)"|\\?([^\s;&|<>()'"]+))""")
 
 REASON = ("Refused: this Bash call waits in the foreground with sleep (a sleep or a sleep-poll loop). "
           "Run the work with run_in_background: true and act on its completion notice, "
@@ -44,8 +47,23 @@ def without_heredocs(script: str) -> str:
                 ends.pop(0)
             continue
         kept.append(line)
-        ends = [found.group(2) for found in HEREDOC.finditer(line)]
+        ends = [next(filter(None, found.groups())) for found in HEREDOC.finditer(line)]
     return "\n".join(kept)
+
+
+def without_arithmetic(script: str) -> str:
+    """Each `$((...))` replaced by 0: its words are numbers and variables, never commands."""
+    kept, i = [], 0
+    while (start := script.find("$((", i)) >= 0:
+        depth, j = 0, start + 1
+        while j < len(script):
+            depth += {"(": 1, ")": -1}.get(script[j], 0)
+            j += 1
+            if not depth:
+                break
+        kept.append(script[i:start] + "0")
+        i = j
+    return "".join(kept) + script[i:]
 
 
 def substitutions(script: str) -> list[str]:
@@ -88,7 +106,7 @@ def tokens(script: str) -> list[str]:
 
 
 def runs_sleep(script: str) -> bool:
-    script = without_heredocs(script.replace("\\\n", " "))
+    script = without_heredocs(without_arithmetic(script.replace("\\\n", " ")))
     if any(runs_sleep(body) for body in substitutions(script)):
         return True
     try:

@@ -116,6 +116,10 @@ class ForegroundSleepTest(unittest.TestCase):
         self.assert_refused('echo "$(sleep 1)"', 'echo "x `sleep 1`"', "diff <(sleep 1; echo a) b")
         self.assert_allowed("echo '$(sleep 1)'", 'echo "\\$(sleep 1)"')
 
+    def test_arithmetic_expansion_is_not_a_command(self) -> None:
+        self.assert_allowed("printf '%s\\n' \"$((sleep + 1))\"", "n=$(( (sleep * 2) + 1 ))")
+        self.assert_refused("n=$((1)); $( (sleep 1) )")
+
     def test_sleep_behind_leading_redirection_refused(self) -> None:
         self.assert_refused(">out sleep 1", "2>/dev/null sleep 1", "make && </dev/null sleep 1")
 
@@ -127,6 +131,10 @@ class ForegroundSleepTest(unittest.TestCase):
         self.assert_allowed("cat <<A <<'B'\nx\nA\nuntil ready; do sleep 5; done\nB\nwc -l f",
                             "cat <<A; cat <<-B\nx\nA\n\tsleep 5\n\tB\nwc -l f")
         self.assert_refused("cat <<A <<B\nx\nA\ny\nB\nsleep 1")
+
+    def test_sleep_in_data_of_a_delimiter_with_non_word_characters_passes(self) -> None:
+        self.assert_allowed("cat > s.sh <<'END-X'\nuntil ready; do sleep 5; done\nEND-X\nbash -n s.sh",
+                            'cat <<"EOF.1"\nsleep 5\nEOF.1')
 
 
 class PromptContextTest(Home):
