@@ -2400,7 +2400,8 @@ round_zero() {
   # (lib.sh prints DEFERRED:), and round 0 costs seconds, not a full gate. gate_last runs bin/check, at the graded HEAD.
   # Round 0 also times this base run: lib.sh stamps each result under FACTORY_CHECK_TIMES, and round-0.times holds each
   # finished check's seconds, for the worker prompt. The run is cut off at ROUND0_SECS, the worker Stop hook's timeout,
-  # and a block that does not end in it is a ticket-defect naming each check over a third of it. This base run only
+  # and a block that does not end in it is a ticket-defect naming each finished check over a third of it; a check still
+  # running at the limit is not named. This base run only
   # approximates the hook's time and does not model the hook, which runs the block under LOAM_HOOK in the worker's tree.
   : > "$stamps"
   FACTORY_CHECK_TIMES="$stamps" run_checks "$wt" "$out" "$GATE_DEFER" timeout -k 10 "$ROUND0_SECS"
@@ -2408,7 +2409,7 @@ round_zero() {
   if [ "$checks_rc" -eq 124 ] || [ "$checks_rc" -eq 137 ]; then   # timeout's exit when it sent TERM, or KILL 10 s later
     git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
     slow=$(awk -v s=$((ROUND0_SECS / 3)) '$1 > s { printf "%s%s (%s s)", sep, $2, $1; sep = ", " }' "$RUN/round-0.times")
-    finish ticket-defect "the done-checks block did not end within $ROUND0_SECS s on $(cut -c1-8 "$RUN/base.sha"), the worker Stop hook's timeout; checks over $((ROUND0_SECS / 3)) s: ${slow:-none}; see $RUN/round-0.times for the checks that ended"
+    finish ticket-defect "the done-checks block did not end within $ROUND0_SECS s on $(cut -c1-8 "$RUN/base.sha"), the worker Stop hook's timeout; finished checks over $((ROUND0_SECS / 3)) s: ${slow:-none} (a check still running at the limit is not named); see $RUN/round-0.times"
   fi
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \

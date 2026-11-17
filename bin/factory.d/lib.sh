@@ -16,7 +16,9 @@ pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_ch
 fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); stamp "$1"; }
 # Under FACTORY_CHECK_TIMES (round 0) each result also appends `<seconds since the block started> <name>` to that file;
 # a check's own time is the gap since the result before it. $SECONDS runs on in a subshell, so a result there counts too.
-stamp() { [ -z "${FACTORY_CHECK_TIMES:-}" ] || printf '%s %s\n' "$SECONDS" "$1" >> "$FACTORY_CHECK_TIMES"; }
+# The name is unset here, so another shell the block starts that sources lib.sh, on its own clock, records nothing.
+check_times=${FACTORY_CHECK_TIMES:-}; unset FACTORY_CHECK_TIMES
+stamp() { [ -z "$check_times" ] || printf '%s %s\n' "$SECONDS" "$1" >> "$check_times"; }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).

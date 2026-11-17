@@ -35,6 +35,7 @@ class RoundZeroTimingTests(unittest.TestCase):
         self.run_dir = self.tmp / "run"
         (self.run_dir / "frozen").mkdir(parents=True)
         shutil.copy(ROOT / "bin/factory.d/_common.md", self.run_dir / "frozen/_common.md")
+        shutil.copy(ROOT / "bin/factory.d/lib.sh", self.run_dir / "frozen/lib.sh")
 
     def round_one(self, limit: int, block: str = BLOCK, loam: bool = True) -> str:
         """stdout of the real round_zero over block at the scratch repo's base, cut off at limit seconds, then round 1's
@@ -72,12 +73,19 @@ class RoundZeroTimingTests(unittest.TestCase):
     def test_a_block_that_does_not_end_in_the_limit_is_a_ticket_defect_naming_its_slow_checks(self) -> None:
         finish = self.finish(self.round_one(limit=3))
         self.assertRegex(finish, r"^FINISH ticket-defect: the done-checks block did not end within 3 s on \w{8}, the "
-                                 r"worker Stop hook's timeout; checks over 1 s: slow-a \(\d+ s\); see ")
+                                 r"worker Stop hook's timeout; finished checks over 1 s: slow-a \(\d+ s\) \(a check still running "
+                                 r"at the limit is not named\); see ")
         self.assertEqual([name for _, name in self.times()], ["slow-a", "quick"])
 
     def test_a_block_that_ends_inside_the_limit_is_not_cut_off(self) -> None:
         # Only timeout's own exit status ends the run: a block that ends a moment before the limit is not refused.
         self.assertIn("ROUND0-OK", self.round_one(limit=3, block='sleep 2.5; fail near "not yet"'))
+
+    def test_a_nested_shell_that_sources_lib_sh_records_no_time(self) -> None:
+        # Only the block's own results are its checks; a script it runs that sources lib.sh has its own clock.
+        block = f"bash -c '. {self.run_dir}/frozen/lib.sh; fail inner x' > /dev/null; fail outer \"not yet\""
+        self.assertIn("ROUND0-OK", self.round_one(limit=30, block=block))
+        self.assertEqual([name for _, name in self.times()], ["outer"])
 
     def test_round_one_prompt_lists_each_check_s_seconds_on_base(self) -> None:
         out = self.round_one(limit=30)
