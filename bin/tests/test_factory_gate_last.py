@@ -174,16 +174,16 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("full gate failing: check-green,", log)
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
 
-    def test_a_relaunch_after_a_cap_stop_before_the_checks_grades_that_round_with_no_new_worker_call(self) -> None:
-        # Round 1's worker call ends past the 4 h cap, so the run stops before its checks; the relaunch runs them and
-        # grades the round instead of paying for its worker call again.
-        self.worker_round(1, {"note.txt": "1\n"}, 'for f in "$HOME"/.local/state/loam-factory/runs/o__r/gprobe/*/launched; do '
-                          'echo $(( $(date -u +%s) - 5 * 3600 )) > "$f"; done\n')
+    def test_a_round_that_waits_5_h_on_its_checks_reaches_its_graders_and_its_pr(self) -> None:
+        # Round 1's checks hold the launch 5 h past a 4 h cap, as a host lock wait does, and pass: the round has used
+        # no model time to speak of, so its graders run and the PR opens.
+        wait = ('[ -f note.txt ] && for f in "$HOME"/.local/state/loam-factory/runs/o__r/gprobe/*/launched; do '
+                'echo $(( $(date -u +%s) - 5 * 3600 )) > "$f"; done; true\n')
+        (self.top / "gprobe.md").write_text(TICKET.replace("```done-checks\n", "```done-checks\n" + wait))
+        self.worker_round(1, {"note.txt": "1\n"})
         self.env["FACTORY_MAX_HOURS"] = "4"
-        self.launch(ok=False)
-        self.assertEqual((self.run / "status").read_text().strip(), "stopped-cap")
-        self.assertFalse((self.run / "round-1.checks").exists())
         self.launch()
+        self.assertEqual((self.top / "judge-calls").read_text().strip(), "1")
         self.assertEqual((self.top / "rounds").read_text().strip(), "1")
         self.assertEqual((self.run / "status").read_text().strip(), "pr-opened")
 
