@@ -1,6 +1,6 @@
 ---
 name: pstack
-description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done."
+description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review or a ruling on its findings, taking over or leading agents, a hard multi-part job, or calling work done."
 allowed-tools: Bash(bash *pstack-path.sh)
 ---
 pstack folder `<P>`: !`bash ${CLAUDE_SKILL_DIR}/pstack-path.sh`
