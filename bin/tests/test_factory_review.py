@@ -276,6 +276,38 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
+    def test_learn_runs_only_on_a_run_that_did_not_pass_its_first_round(self) -> None:
+        # A clean first-round pass skips learn, follow-ups or not. A round-1 draft whose graders failed at the cap (a
+        # queued fix, or a judge fail with only backlog), a round-1 stop at a cap, and a pass that needed a second
+        # worker round, still draft.
+        for k in (1, 2):
+            self.put(f"round-{k}.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.put("status", "pr-opened\n")
+        self.put("factory.log", "2026-11-16T00:00:00Z EXIT pr-opened (0): file ticket\n")
+        proc = self.bash('learn_run pr-opened "file ticket"; echo "rc=$?"', preset="ROUND=1")
+        self.assertIn("rc=0", proc.stdout, proc.stderr)
+        self.assertIn("learn: a clean first-round pass; skipped", proc.stderr)
+        self.assertEqual(self.claude_calls(), [])
+        self.assertFalse((self.run_dir / "learn").exists())
+        draft = {"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}
+        fail = {"verdict": "fail", "backlog": ["the gate ran serially"]}   # a judge fail may queue only backlog
+        cases = ((1, "- [high] a.py:1 still broken\n", None, "pr-opened"), (1, "", fail, "pr-opened"),
+                 (1, "", None, "stopped-cap"), (2, "", None, "pr-opened"))
+        for rounds, fixes, judge, status in cases:
+            with self.subTest(rounds=rounds, fixes=bool(fixes), judge=bool(judge), status=status):
+                self.put("round-1.judge.json", judge or {"verdict": "pass", "backlog": ["the gate ran serially"]})
+                self.put("status", status + "\n")
+                self.put("factory.log", f"2026-11-16T00:00:00Z EXIT {status} (0): file ticket\n")
+                (self.run_dir / "learn").mkdir(exist_ok=True)
+                (self.run_dir / "learn" / "ran").unlink(missing_ok=True)
+                (self.fake / "claude-calls.jsonl").unlink(missing_ok=True)
+                self.put("round-1.fixes", fixes)
+                self.replies(draft, review())
+                proc = self.bash(f'learn_run {status} "file ticket"; echo "rc=$?"', preset=f"ROUND={rounds}")
+                self.assertIn("rc=0", proc.stdout, proc.stderr)
+                self.assertNotIn("clean first-round pass", proc.stderr)
+                self.assertIn("the gate ran serially", self.claude_calls()[0]["prompt"])
+
     def test_the_hour_cap_stops_learn_calls(self) -> None:
         # learn runs after the exit; a run that stopped at MAX_HOURS spends no more time on learn (L01, 13 Nov 2026).
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
