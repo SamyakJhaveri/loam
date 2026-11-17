@@ -24,7 +24,7 @@ That covers the legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), 
 
 ## 2. Spawn three reviewers
 
-Make a findings folder `<dir>` (a fresh `mktemp -d`, or the run's evidence folder). Start reviewers as agent slots free under the session's cap, each a `Task` call, `subagent_type: generalPurpose`, agent mode (`readonly: false`). Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, and readonly strips MCPs.
+Make a findings folder `<dir>` (a fresh `mktemp -d`, or the run's evidence folder). Start reviewers as agent slots free under the session's cap, each a `Task` call, `subagent_type: worker` (the plugin's agent-route hook refuses `general-purpose`), agent mode (`readonly: false`). Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, and readonly strips MCPs.
 
 Each reviewer and the synthesizer name a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
 
@@ -38,7 +38,7 @@ Pass each template verbatim, substituting the transcript path or digest and the 
 
 ## 3. Synthesize
 
-One `Task` call, `subagent_type: generalPurpose`, `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-xhigh`), agent mode (`readonly: false`). It spot-verifies citations through MCP, and readonly strips MCPs. Pass `references/synthesizer.md` verbatim, with the three findings paths and the transcript path (or an updated digest) where marked. The synthesizer reads the three files (in a fresh session if the lead hands off) and drops to-dos resolved after the last line read. It returns an Accepted / Rejected / Backlog list.
+One `Task` call, `subagent_type: worker`, `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-xhigh`), agent mode (`readonly: false`). It spot-verifies citations through MCP, and readonly strips MCPs. Pass `references/synthesizer.md` verbatim, with the three findings paths and the transcript path (or an updated digest) where marked. The synthesizer reads the three files (in a fresh session if the lead hands off) and drops to-dos resolved after the last line read. It returns an Accepted / Rejected / Backlog list.
 
 ## 4. Structural enforcement check
 
@@ -50,14 +50,14 @@ Present the synthesizer's full Accepted / Rejected / Backlog output and wait for
 
 File each Backlog item to your team's devex or backlog tracker without waiting. Only the Accepted list waits for approval.
 
-Never edit a skill under `~/.claude/plugins/cache/`. Before approval, show its destination, `.cursor/skills/<skill>/` or `~/.cursor/skills/<skill>/`. After approval, copy the skill folder there and edit the copy. Never open a PR or push.
+Never edit a skill under `~/.claude/plugins/cache/`. Before approval, show its destination: the owner copy `<S>/<skill>/` (`<S>` is the folder above `<this file's folder>`, which the `pstack` router reads), edited in its source checkout (Loam's `cultivation/marketplace/sam-cc-setup/skills/<skill>/`), never in the installed plugin. After approval, for a pstack skill with no owner copy yet, copy its folder there and point the router's row at `<S>/<skill>`; then edit the copy. Never open a PR or push.
 
 Follow each approved row's Routing exactly:
 
 - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
-- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor's built-in skill `create-skill` and run its draft / test / iterate loop.
-- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `create-skill` and run its description-optimization loop.
-- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.
+- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): in Claude Code, which has no `create-skill`, edit the owner copy directly and validate it with `claude plugin validate --strict` on the marketplace folder.
+- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): edit the description in the owner copy directly and validate it the same way.
+- `new skill via create-skill: <kebab-name>`: write it in `<S>/<kebab-name>/` in the shape of a skill beside it, and validate it the same way.
 
 If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.
 
