@@ -1,10 +1,11 @@
-"""Round 0 times the done-checks block on base against the worker's Stop hook timeout, and the worker prompt lists
+"""Round 0 times the done-checks block on base against a Claude worker's Stop hook timeout, and the worker prompt lists
 each check's base seconds.
 
 A block that outruns the Stop hook is cancelled at every stop, so round 0 ends such a run as ticket-defect, naming each
 check over a third of the timeout (300 s of 900 s); distbench's J31 spent 90 min in one block call. bin/factory is
-sourced (FACTORY_SOURCED=1) and the real round_zero and build_worker_prompt run over a scratch repository, with a frozen
-worker-settings.json whose Stop hook timeout is 3 s, so a check of 2 s stands for one over 300 s.
+sourced (FACTORY_SOURCED=1) and the real round_zero and build_worker_prompt run over a scratch repository, with the
+real worker-settings.json frozen with its check hook's timeout set to 3 s, so a check of 2 s stands for one over 300 s,
+and beside it a user's unrelated Stop hook with a 60 s timeout.
 """
 
 from __future__ import annotations
@@ -37,14 +38,19 @@ class RoundZeroTimingTests(unittest.TestCase):
         (self.run_dir / "frozen").mkdir(parents=True)
         shutil.copy(ROOT / "bin/factory.d/_common.md", self.run_dir / "frozen/_common.md")
 
-    def round_one(self, hook_timeout: int) -> str:
-        """stdout of the real round_zero over BLOCK at the scratch repo's base, then round 1's prompt for a Claude worker
-        and for a Codex worker, each after a `PROMPT <kind>` line."""
+    def round_one(self, hook_timeout: int, kind: str = "claude", block: str = BLOCK, loam: bool = True,
+                  user_hook: bool = True) -> str:
+        """stdout of the real round_zero over block at the scratch repo's base for a kind worker, then round 1's prompt
+        for a Claude worker and for a Codex worker, each after a `PROMPT <kind>` line."""
         run = self.run_dir
-        (run / "frozen/worker-settings.json").write_text(json.dumps(
-            {"hooks": {"Stop": [{"hooks": [{"type": "command", "timeout": hook_timeout, "command": "true"}]}]}}))
-        (run / "issue.md").write_text(f"## Done checks\n\n```done-checks\n{BLOCK}\n```\n")
+        settings = json.loads((ROOT / "bin/factory.d/worker-settings.json").read_text())
+        settings["hooks"]["Stop"][0]["hooks"][0]["timeout"] = hook_timeout
+        if user_hook:
+            settings["hooks"]["Stop"].append({"hooks": [{"type": "command", "timeout": 60, "command": "true"}]})
+        (run / "frozen/worker-settings.json").write_text(json.dumps(settings))
+        (run / "issue.md").write_text(f"## Done checks\n\n```done-checks\n{block}\n```\n")
         script = (f"RUN='{run}'; WORKTREE='{run}/wt'; MAIN_CHECKOUT='{self.tmp}/repo'; LOG=\"$RUN/log\"\n"
+                  f"WORKER_KIND={kind}; TARGET_IS_LOAM={int(loam)}\n"
                   'finish() { echo "FINISH $1: $2"; exit 0; }\n'
                   'BODY=$(cat "$RUN/issue.md"); git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"\n'
                   "{ cat bin/factory.d/lib.sh; echo; dc_block; echo; echo \"$CHECKS_END\"; echo 'exit $((n_fail > 0))'; }"
@@ -57,22 +63,39 @@ class RoundZeroTimingTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
 
-    def prompts(self) -> dict[str, str]:
-        _, claude, codex = self.round_one(hook_timeout=30).split("ROUND0-OK\n", 1)[1].split("PROMPT ")
+    def prompts(self, loam: bool = True) -> dict[str, str]:
+        _, claude, codex = self.round_one(hook_timeout=30, loam=loam).split("ROUND0-OK\n", 1)[1].split("PROMPT ")
         return {"claude": claude, "codex": codex}
+
+    def finish(self, out: str) -> str:
+        (finish,) = [line for line in out.splitlines() if line.startswith("FINISH")]
+        self.assertNotIn("ROUND0-OK", out)
+        self.assertFalse((self.run_dir / "round-0.checks").exists())
+        return finish
 
     def times(self) -> list[tuple[int, str]]:
         rows = (self.run_dir / "round-0.times").read_text().split("\n")
         return [(int(secs), name) for secs, name in (row.split() for row in rows if row)]
 
     def test_a_block_slower_than_the_stop_hook_is_a_ticket_defect_naming_its_slow_checks(self) -> None:
-        out = self.round_one(hook_timeout=3)
-        (finish,) = [line for line in out.splitlines() if line.startswith("FINISH")]
-        self.assertRegex(finish, r"^FINISH ticket-defect: the done-checks block took \d+ s on \w{8}, over the worker "
-                                 r"Stop hook's 3 s timeout; checks over 1 s: slow-a \(\d+ s\), slow-b \(\d+ s\); see ")
+        # The limit is the check hook's 3 s, not the 60 s of the user's Stop hook beside it.
+        finish = self.finish(self.round_one(hook_timeout=3))
+        self.assertRegex(finish, r"^FINISH ticket-defect: the done-checks block did not end within the worker Stop "
+                                 r"hook's 3 s timeout on \w{8}; checks over 1 s: slow-a \(\d+ s\)(, slow-b \(\d+ s\))?; see ")
         self.assertNotIn("quick", finish)
-        self.assertNotIn("ROUND0-OK", out)
-        self.assertFalse((self.run_dir / "round-0.checks").exists())
+
+    def test_a_block_that_never_ends_is_a_ticket_defect_with_the_timings_it_reached(self) -> None:
+        finish = self.finish(self.round_one(hook_timeout=3, block='fail quick "not yet"\nsleep 1000; fail hung "not yet"'))
+        self.assertIn("ticket-defect: the done-checks block did not end within the worker Stop hook's 3 s", finish)
+        self.assertEqual([name for _, name in self.times()], ["quick"])
+
+    def test_the_block_is_timed_as_the_stop_hook_runs_it(self) -> None:
+        # Under LOAM_HOOK, as the hook runs it, this check takes 4 s; without it, none.
+        finish = self.finish(self.round_one(hook_timeout=3, block='[ -z "${LOAM_HOOK:-}" ] || sleep 4; fail hook-slow "x"'))
+        self.assertIn("ticket-defect: the done-checks block did not end within the worker Stop hook's 3 s", finish)
+
+    def test_a_codex_worker_with_no_stop_hook_is_not_held_to_its_timeout(self) -> None:
+        self.assertIn("ROUND0-OK", self.round_one(hook_timeout=3, kind="codex", user_hook=False))
 
     def test_round_one_prompt_lists_each_check_s_seconds_on_base(self) -> None:
         out = self.round_one(hook_timeout=30)
@@ -96,6 +119,16 @@ class RoundZeroTimingTests(unittest.TestCase):
         (line,) = [line for line in prompts["codex"].splitlines() if "checks.sh" in line]
         self.assertIn(f"`LOAM_HOOK=1 bash {self.run_dir}/frozen/checks.sh`", line)
         self.assertIn("before you finish", line)
+
+
+    def test_a_codex_worker_elsewhere_runs_the_lines_by_hand_when_the_block_calls_the_gate_another_way(self) -> None:
+        # Under LOAM_HOOK only the exact `guard bin/check` passes unrun, so `guard ./bin/check` in checks.sh would run
+        # another target's full gate, which its worker must never run.
+        (line,) = [line for line in self.prompts(loam=False)["codex"].splitlines() if "checks.sh" in line]
+        self.assertIn("other than exactly `guard bin/check`", line)
+        self.assertIn("by hand", line)
+        (line,) = [line for line in self.prompts()["codex"].splitlines() if "checks.sh" in line]
+        self.assertNotIn("by hand", line)
 
 
 if __name__ == "__main__":
