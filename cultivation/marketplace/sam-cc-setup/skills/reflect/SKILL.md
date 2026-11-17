@@ -38,7 +38,7 @@ Pass each template verbatim, substituting the transcript path or digest and the 
 
 ## 3. Synthesize
 
-One `Task` call, `subagent_type: generalPurpose`, `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-xhigh`), agent mode (`readonly: false`). It spot-verifies citations through MCP, and readonly strips MCPs. Pass `references/synthesizer.md` verbatim, with the three findings paths where marked. The synthesizer reads the three files (in a fresh session if the lead hands off) and drops to-dos resolved after the last line read. It returns an Accepted / Rejected / Backlog list.
+One `Task` call, `subagent_type: generalPurpose`, `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-xhigh`), agent mode (`readonly: false`). It spot-verifies citations through MCP, and readonly strips MCPs. Pass `references/synthesizer.md` verbatim, with the three findings paths and the transcript path (or an updated digest) where marked. The synthesizer reads the three files (in a fresh session if the lead hands off) and drops to-dos resolved after the last line read. It returns an Accepted / Rejected / Backlog list.
 
 ## 4. Structural enforcement check
 

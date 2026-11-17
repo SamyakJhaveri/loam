@@ -3,7 +3,8 @@
 The router (cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md) is a table of situations and the pstack
 skills to read for each, then a list of every principle card. A pstack update can rename or drop a skill, and the
 router would then send agents to a missing file; a new principle card would go unlisted. A table entry written
-`<S>/<name>` is an owner skill beside the router in sam-cc-setup and must exist there. The drift test reads the
+`<S>/<name>`, in the table or the principle list, is an owner skill beside the router in sam-cc-setup and must
+exist there; an owner copy of a principle card still stands for that card in the drift test. The drift test reads the
 pstack folder from the real user's ~/.claude/plugins/installed_plugins.json (conftest points HOME at a scratch dir)
 and skips when pstack is not installed, as on CI.
 """
@@ -35,7 +36,7 @@ def router_names() -> tuple[set[str], list[str]]:
         if line == "Principles:":
             in_list = True
         elif in_list and line.startswith("- "):
-            principles.append(line[2:].split(":", 1)[0])
+            principles.append(line[2:].split(":", 1)[0].replace("`", ""))
     return table, principles
 
 
@@ -60,8 +61,8 @@ class PstackRouterTests(unittest.TestCase):
         self.assertEqual(len(principles), len(set(principles)))
 
     def test_every_owner_skill_in_the_table_exists_beside_the_router(self) -> None:
-        table, _ = router_names()
-        missing = sorted(n for n in table if n.startswith(SIBLING)
+        table, principles = router_names()
+        missing = sorted(n for n in table | set(principles) if n.startswith(SIBLING)
                          and not (ROUTER.parents[1] / n[len(SIBLING):] / "SKILL.md").is_file())
         self.assertEqual(missing, [], f"router names missing from {ROUTER.parents[1]}")
 
@@ -72,6 +73,7 @@ class PstackRouterTests(unittest.TestCase):
         installed = {p.parent.name for p in (pstack / "skills").glob("*/SKILL.md")}
         table, principles = router_names()
         table = {n for n in table if not n.startswith(SIBLING)}
+        principles = [n.removeprefix(SIBLING) for n in principles]
         self.assertEqual(sorted((table | set(principles)) - installed), [], f"router names missing from {pstack}")
         cards = sorted(n for n in installed if n.startswith("principle-"))
         self.assertEqual(sorted(principles), cards, f"the router's principle list differs from {pstack}'s cards")

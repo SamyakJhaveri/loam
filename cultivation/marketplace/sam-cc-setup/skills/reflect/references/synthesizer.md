@@ -10,7 +10,9 @@ Reviewer findings files (read each in full):
 
 <DIVERGENT_PATH>
 
-Each file names the last transcript line its reviewer read. Drop a live-state to-do the transcript or the current state shows resolved after that line; it is not a learning.
+The transcript the reviewers read, now possibly longer (or an updated digest): <TRANSCRIPT_PATH>
+
+Each file names the last transcript line its reviewer read. Read the transcript entries after that line, and drop a live-state to-do they or the current state show resolved; it is not a learning.
 
 Apply each criterion to every finding:
 
