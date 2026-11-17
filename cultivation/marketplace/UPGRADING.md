@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.39 the pstack router fires at a takeover and on review rulings
+
+The `pstack` router's description now also names a ruling on review findings and taking over or leading agents, the two moments a distbench lead skipped the router (the distbench /reflect of 17 November 2026, item R13, accepted by the owner that day); the sam-cc-setup listing budget in `bin/check` rises from 408 to 423 tokens for it.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
 
 The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.
