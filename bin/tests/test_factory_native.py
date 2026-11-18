@@ -19,11 +19,15 @@ import pty
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+NS_OK = sys.platform.startswith("linux") and subprocess.run(
+    ["bwrap", "--dev-bind", "/", "/", "--unshare-pid", "--die-with-parent", "--proc", "/proc", "true"],
+    capture_output=True).returncode == 0 if shutil.which("bwrap") else False
 BASE = "83b59cf2"  # the commit U3 branched from: today's bin/factory, the Loam-target reference
 HOME_PATHS = ("bin/factory", "bin/factory.d", "bin/claude-account", "bin/alert", "bin/factory-parity",
               "cultivation/marketplace/sam-cc-setup")
@@ -41,6 +45,8 @@ stdin = sys.stdin.read()
 keys = ("LOAM_CHECKS", "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "ANTHROPIC_DEFAULT_SONNET_MODEL",
         "ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CONFIG_DIR")
 rec = {"argv": sys.argv[1:], "env": {k: os.environ.get(k) for k in keys}, "stdin": stdin}
+if os.environ.get("HOST_PIDNS"):
+    rec["own_pidns"] = os.readlink("/proc/self/ns/pid") != os.environ["HOST_PIDNS"]
 (cap / ("%02d.json" % len(list(cap.glob("*.json"))))).write_text(json.dumps(rec))
 model = sys.argv[sys.argv.index("--model") + 1]
 if "stream-json" in sys.argv:
@@ -275,6 +281,13 @@ class NativeShellTests(unittest.TestCase):
         self.assertEqual((self.h.run / "frozen/plugin-dir").read_text(), f"{self.new / PLUGIN}\n")
         # The skill resolves through the user tier's enabledPlugins, which the frozen file no longer carries.
         self.assertIn(f"read {self.h.pstack}/skills/tdd/SKILL.md", r["worker"]["stdin"])
+
+    @unittest.skipUnless(NS_OK, "bwrap cannot make a PID namespace here (not Linux, or inside a sandbox)")
+    def test_another_targets_worker_runs_in_its_own_pid_namespace(self) -> None:
+        # The native worker's Bash runs with the sandbox off, so its call runs in a PID namespace of its own (distbench
+        # R543), whose signals cannot reach this test or any other host process.
+        r = self.h.round_one(self.new, loam=False, HOST_PIDNS=os.readlink("/proc/self/ns/pid"))
+        self.assertIs(r["worker"]["own_pidns"], True)
 
     def test_native_skill_resolution_reads_the_user_tier(self) -> None:
         # The same ticket with pstack disabled in the user tier names a skill no SKILL.md backs: the run stops.

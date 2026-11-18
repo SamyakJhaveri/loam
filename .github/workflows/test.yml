@@ -50,6 +50,10 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@loam"
 
+      # bin/factory starts each worker call for another target, and each verifier call, in a bwrap PID namespace.
+      - name: Install bubblewrap
+        run: sudo apt-get install -y --no-install-recommends bubblewrap
+
       - name: Run check
         run: bin/check
         # The runner's /tmp is a tmpfs with a user quota (EDQUOT, 2026-10-21).
