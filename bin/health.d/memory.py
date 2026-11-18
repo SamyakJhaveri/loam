@@ -28,9 +28,11 @@ STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
 TICKS = re.compile(r"`+")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
-QUOTE = re.compile(r"(?:[ \t]*> ?)*")
-ITEM = re.compile(r"[ \t]*(?:[-+*]|\d{1,9}[.)])(?:\s|$)")
-ONE_LINE_BLOCK = re.compile(r"[ \t]*(?:#{1,6}(?:\s|$)|([-*_])(?:[ \t]*\1){2,}[ \t]*$|=+[ \t]*$|-+[ \t]*$)")
+QUOTE = re.compile(r" {0,3}> ?")
+ITEM = re.compile(r" {0,3}(?:[-+*]|(\d{1,9})[.)])(?=\s|$)")
+ATX = re.compile(r" {0,3}#{1,6}(?:\s|$)")
+THEMATIC = re.compile(r" {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+SETEXT = re.compile(r" {0,3}(?:=+|-+)[ \t]*$")
 BLOCK_SCALAR = re.compile(r"[>|][-+0-9]*")
 ABSOLUTE = re.compile(r"\b(never|always|must)\b", re.I)
 DATE_TAG = re.compile(r"\[[^\s\]]+ [0-9a-fA-F]{8} \d{4}-\d{2}-\d{2}\]")
@@ -93,46 +95,78 @@ def unfenced(lines: list) -> list:
     return out
 
 
-def blank_code_spans(paragraph: list) -> list:
-    """The paragraph's (quote prefix, content) lines, rejoined with each inline code span in the content blanked to
+def blank_code_spans(lines: list, paragraph: list, out: list) -> None:
+    """Set out[n] for each (n, start) of the paragraph to lines[n] from start on, with each inline code span blanked to
     spaces. As in CommonMark, a run of n backticks opens a span that the next run of exactly n backticks closes; a run
     with no such close is literal."""
-    if not paragraph:
-        return []
-    text, out, i = "\n".join(content for _, content in paragraph), [], 0
+    text, kept, i = "\n".join(lines[n][start:] for n, start in paragraph), [], 0
     while m := TICKS.search(text, i):
         close = re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
         if close:
-            out.append(text[i:m.start()] + re.sub(r"[^\n]", " ", text[m.start():close.end()]))
+            kept.append(text[i:m.start()] + re.sub(r"[^\n]", " ", text[m.start():close.end()]))
             i = close.end()
         else:
-            out.append(text[i:m.end()])
+            kept.append(text[i:m.end()])
             i = m.end()
-    return [prefix + line for (prefix, _), line in zip(paragraph, ("".join(out) + text[i:]).split("\n"))]
+    for (n, start), line in zip(paragraph, ("".join(kept) + text[i:]).split("\n")):
+        out[n] = line
+
+
+def item_width(rest: str, interrupts: bool) -> int:
+    """The width up to a list item's content when rest starts one, else 0. Only a non-empty item, and for a numbered
+    one only one starting at 1, interrupts a paragraph."""
+    m = ITEM.match(rest)
+    if not m:
+        return 0
+    after = rest[m.end():]
+    if interrupts and (not after.strip() or (m.group(1) and int(m.group(1)) != 1)):
+        return 0
+    spaces = len(after) - len(after.lstrip(" "))
+    return m.end() + (spaces if after.strip() and spaces <= 4 else 1)
 
 
 def prose(lines: list, outside: list) -> list:
-    """The lines with fenced and blank lines emptied and inline code spans blanked. As in CommonMark, a span stays in
-    its paragraph, inside one quote depth; a blank or fenced line or a change of quote depth ends a paragraph, a list
-    item starts one, and an ATX heading, setext underline or thematic break is a block of its own line. These match at
-    any indent, so nested blocks split too: a split CommonMark would not make can only expose a link, never hide one."""
-    out, paragraph, depth = [], [], 0
-    for line, ok in zip(lines, outside):
-        prefix = QUOTE.match(line).group() if ok else ""
-        content = line[len(prefix):]
-        one_line = ok and ONE_LINE_BLOCK.match(content)
-        if not ok or not content.strip() or prefix.count(">") != depth or one_line or ITEM.match(content):
-            out += blank_code_spans(paragraph)
+    """Per line, its paragraph or heading text after its quote and list markers, with inline code spans blanked, or ""
+    for any other line. By CommonMark's block rules, each line first matches the open quotes (`>`) and list items
+    (indented to the item's content), then may open new ones; a paragraph ends at a blank or fenced line, a heading, a
+    thematic break, a setext underline or a new container, and a line that matches fewer containers but starts no block
+    continues it (lazy continuation)."""
+    out, containers, paragraph = [""] * len(lines), [], []
+    for n, line in enumerate(lines):
+        if not outside[n]:
+            blank_code_spans(lines, paragraph, out)
             paragraph = []
-        depth = prefix.count(">")
-        if ok and content.strip():
-            paragraph.append((prefix, content))
-        else:
-            out.append("")
-        if one_line:
-            out += blank_code_spans(paragraph)
+            continue
+        pos, matched = 0, 0
+        for c in containers:
+            if c == ">" and (q := QUOTE.match(line, pos)):
+                pos = q.end()
+            elif c != ">" and not line[pos:pos + c].strip():
+                pos += c
+            else:
+                break
+            matched += 1
+        rest = line[pos:]
+        if paragraph and matched < len(containers) and rest.strip() and not (
+                QUOTE.match(rest) or ATX.match(rest) or THEMATIC.match(rest) or item_width(rest, False)):
+            paragraph.append((n, pos))
+            continue
+        changed = matched < len(containers)
+        del containers[matched:]
+        while (q := QUOTE.match(line, pos)) or (width := item_width(line[pos:], bool(paragraph) and not changed)):
+            containers.append(">" if q else width)
+            pos, changed = q.end() if q else pos + width, True
+        rest = line[pos:]
+        leaf = ATX.match(rest) or THEMATIC.match(rest) or SETEXT.match(rest)
+        if changed or leaf or not rest.strip():
+            blank_code_spans(lines, paragraph, out)
             paragraph = []
-    return out + blank_code_spans(paragraph)
+        if ATX.match(rest):
+            blank_code_spans(lines, [(n, pos)], out)
+        elif rest.strip() and not leaf:
+            paragraph.append((n, pos))
+    blank_code_spans(lines, paragraph, out)
+    return out
 
 
 def build_index(folder: str, notes: list) -> str:
