@@ -137,6 +137,62 @@ class ForegroundSleepTest(unittest.TestCase):
                             'cat <<"EOF.1"\nsleep 5\nEOF.1')
 
 
+class GitDenySpellingTest(Home):
+    # The first four ran past `Bash(git push --force-with-lease:*)` and friends in distbench sessions on 17 Nov 2026.
+    REFUSED = (
+        "git -C /wt push --force-with-lease=tickets/fs4-j309-j310:f25909e23 origin tickets/fs4-j309-j310",
+        "git -C /wt push --force-with-lease origin feat/b2-b4-rows",
+        "git -C x reset --hard",
+        "cd x && /usr/bin/git --no-pager -c a=b clean -f -d",
+        "git --git-dir=.git --work-tree . push -f",
+        'git push "--force" origin b',
+        "env FOO=1 sudo rm -rf build",
+        "bash -c 'git push --force origin b'",
+        "echo $(git -C . stash drop)",
+    )
+    ALLOWED = (
+        "git -C x push origin b",
+        "git -C x checkout -- src/a.py",
+        "git -C x log --format=%H -1",
+        "git -C x commit -m 'git -C y push --force'",
+        "git commit -F - <<'EOF'\ngit -C y push --force\nEOF",
+        "git -c core.pager=cat reset --soft HEAD~1",
+        "rm -r -v build",
+    )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(".claude/settings.json", json.dumps({"permissions": {"deny": ["Bash(rm -rf:*)", "Read(.env*)"]}}))
+        self.write("project/.claude/settings.json", json.dumps({"permissions": {"deny": [
+            "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push --force-with-lease:*)",
+            "Bash(git clean -f:*)", "Bash(git stash drop:*)"]}}))
+        self.write("project/.claude/settings.local.json", json.dumps({"permissions": {"deny": [
+            "Bash(git reset --hard *)"]}}))
+
+    def bash(self, command: str) -> subprocess.CompletedProcess[str]:
+        return run("git-deny-spelling.py", {"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                                             "tool_input": {"command": command}}, self.env)
+
+    def test_other_spellings_of_a_denied_command_refused(self) -> None:
+        for command in self.REFUSED:
+            r = self.bash(command)
+            self.assertEqual(r.returncode, 2, command)
+            self.assertIn("deny rule `Bash(", r.stderr)
+
+    def test_allowed_commands_and_data_pass(self) -> None:
+        for command in self.ALLOWED:
+            r = self.bash(command)
+            self.assertEqual(r.returncode, 0, f"{command}\n{r.stderr}")
+
+    def test_refusal_names_the_rule_and_the_plain_form(self) -> None:
+        r = self.bash("git -C /wt push --force-with-lease=b:abc origin b")
+        self.assertIn("runs `git push --force-with-lease b:abc origin b`", r.stderr)
+        self.assertIn("`Bash(git push --force-with-lease:*)`", r.stderr)
+
+    def test_spelling_the_rule_already_matches_is_left_to_claude_code(self) -> None:
+        self.assertEqual(self.bash("git push --force origin b").returncode, 0)
+
+
 class PromptContextTest(Home):
     def prompt(self, text: str) -> str:
         r = run("prompt-context.py", {"hook_event_name": "UserPromptSubmit", "prompt": text}, self.env)
@@ -181,6 +237,7 @@ class HooksJsonTest(unittest.TestCase):
                  for event, groups in hooks.items() for group in groups for h in group["hooks"]}
         self.assertEqual(wired, {("PreToolUse", "Agent", "agent-route.py"),
                                  ("PreToolUse", "Bash", "no-foreground-sleep.py"),
+                                 ("PreToolUse", "Bash", "git-deny-spelling.py"),
                                  ("UserPromptSubmit", "", "prompt-context.py")})
         for _, _, script in wired:
             self.assertTrue((HOOKS / script).is_file(), script)
