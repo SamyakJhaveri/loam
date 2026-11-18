@@ -3,6 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.42 reflect and audit take the owner's words and the classifier refusals from one script
+
+`skills/reflect/words-and-refusals.py TRANSCRIPT [SUBAGENT ...]` prints, with line numbers, the `user` entries whose `origin.kind` is exactly "human", and each `tool_result` with `is_error` true whose text holds "auto mode classifier", joined by id to the `tool_use` it answers.
+Reflect step 1 and audit's Gather step name it.
+From the distbench /reflect of 17 November 2026: an owner-words file built with a missing origin counted as human took in entries that were not the owner's and went to blind reviewers, and a keyword grep missed a classifier refusal the lead was looking for.
+On that session it printed every human entry, none of the entries without an origin, and every refusal across the lead and its agents, the missed one among them.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
 
 The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.
