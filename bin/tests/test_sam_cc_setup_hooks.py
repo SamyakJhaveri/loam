@@ -140,7 +140,7 @@ class ForegroundSleepTest(unittest.TestCase):
 class GitDenySpellingTest(Home):
     # The first two are the shapes that slipped past prefix deny rules in use: global options and `--opt=value`.
     REFUSED = (
-        "git -C /wt push --force-with-lease=topic:f25909e23 origin topic",
+        "git -C /wt push --force-with-lease=topic:0123abcd origin topic",
         "git -C /wt push --force-with-lease origin topic",
         "git -C x reset --hard",
         "cd x && /usr/bin/git --no-pager -c a=b clean -f -d",
