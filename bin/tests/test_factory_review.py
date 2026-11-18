@@ -13,6 +13,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 import unittest.mock
@@ -28,7 +29,15 @@ log = d / "claude-calls.jsonl"
 n = len(log.read_text().splitlines()) + 1 if log.exists() else 1
 head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 with log.open("a") as f:
-    f.write(json.dumps({"argv": sys.argv[1:], "head": head, "prompt": sys.stdin.read()}) + "\\n")
+    rec = {"argv": sys.argv[1:], "head": head, "prompt": sys.stdin.read()}
+    host = os.environ.get("HOST_PID")
+    if host:
+        try:
+            os.kill(int(host), 0)
+            rec["host_seen"] = True
+        except ProcessLookupError:
+            rec["host_seen"] = False
+    f.write(json.dumps(rec) + "\\n")
 reply = d / ("claude-reply.%d" % n)
 if not reply.exists():
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": ""}))
@@ -211,6 +220,16 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(len([a for a in alerts if "UNVERIFIED" in a]), 1, alerts)
         roles = [json.loads(x)["role"] for x in self.read("ledger.jsonl").splitlines()]
         self.assertEqual(roles, ["verifier"])
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "PID namespaces are Linux only")
+    def test_the_verifier_cannot_signal_a_host_process(self) -> None:
+        # The verifier's Bash runs with the sandbox off, so its call runs in a PID namespace of its own (distbench
+        # R543): signal 0 to this test's own process, a host process, finds no such process.
+        self.put("round-1.review.json", review(("high", "real bug")))
+        self.replies({"findings": [verdict("reviewer-0", "CONFIRMED")]})
+        self.verify(HOST_PID=str(os.getpid()))
+        [call] = self.claude_calls()
+        self.assertIs(call["host_seen"], False)
 
     def test_no_blocking_finding_makes_no_call(self) -> None:
         self.put("round-1.review.json", review(("low", "nit")))

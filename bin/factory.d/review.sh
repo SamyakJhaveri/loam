@@ -48,14 +48,15 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
   local mode=() adds=() d
   shift 8
   for d in "$@"; do adds+=(--add-dir "$d"); done
-  [ "$role" = verifier ] && { tools=Bash,Read,Grep,Glob; mode=(--permission-mode auto); }
+  CALL_NS=()
+  [ "$role" = verifier ] && { tools=Bash,Read,Grep,Glob; mode=(--permission-mode auto); call_ns; }
   raw="${out%.json}.raw.json"
   rm -f "$out" "$raw"
   mkdir -p -m 700 "$RUN/grader-config" && chmod 700 "$RUN/grader-config" || { log "could not make $RUN/grader-config"; return 1; }
   while :; do
     CALL_ACCOUNT=$(active_account)
     log "$role call: model=$model effort=$effort dir=$dir"
-    call_start "$dir" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} "$ROOT/bin/claude-account" exec env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
+    call_start "$dir" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} ${CALL_NS[@]+"${CALL_NS[@]}"} "$ROOT/bin/claude-account" exec env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
         claude -p --model "$model" --effort "$effort" --tools "$tools" ${mode[@]+"${mode[@]}"} ${adds[@]+"${adds[@]}"} \
         --strict-mcp-config --disable-slash-commands --no-session-persistence --json-schema "$schema" \
         --setting-sources '' --settings "$RUN/frozen/role-settings.json" \

@@ -2,8 +2,8 @@
 # bin/factory.d/probe-native.sh <clone> - one paid call of the native worker shell on a scratch clone of another target
 # (docs/research/2026-11-12-distbench-priming/design-pick.md, unit U3). It sources this checkout's bin/factory, writes the frozen
 # worker settings with freeze_shell, builds the worker command with worker_cmd, and runs that command in the clone,
-# so a wrong flag or settings file cannot pass. The model runs five Bash calls (an AF_UNIX bind in a multi-line
-# python3 -c, a systemd-run scope in distbench-build.slice, docker ps, mpirun, a git commit in the clone) and the
+# so a wrong flag or settings file cannot pass. The model runs six Bash calls (an AF_UNIX bind in a multi-line
+# python3 -c, a systemd-run scope in distbench-build.slice, docker ps, mpirun, a git commit in the clone, and a kill loop over every process group outside its own shell) and the
 # probe reads the real init event and tool results. It prints one line per command, the count of permission_denied
 # events, the cost, and last
 #   permissionMode=auto plugin=<this checkout>/cultivation/marketplace/sam-cc-setup verify-distbench=yes BIND_OK
@@ -30,8 +30,12 @@ printf 'exit 0\n' > "$RUN/frozen/checks.sh"   # the Stop hook's checks: nothing 
 MAX_TURNS=8
 worker_cmd
 
+# Command 6 is R543's kill loop (distbench): from the worker's own shell, signal 0 to this host sentinel must find no such
+# process, and SIGKILL to every process group outside the shell's own ancestry must end only the inner sentinel.
+setsid sleep 900 > /dev/null 2>&1 < /dev/null &
+host=$!
 cat > "$work/prompt.md" <<EOF
-This is a probe of your shell. Run each of these five commands in its own Bash call, in this order, exactly as written,
+This is a probe of your shell. Run each of these six commands in its own Bash call, in this order, exactly as written,
 whatever an earlier one printed. Then reply with the single word done.
 
 1.
@@ -52,6 +56,30 @@ mpirun -n 1 true 2> /dev/null && echo MPI_OK
 
 5.
 git -C $clone -c user.name=probe -c user.email=probe@example.invalid commit -q --allow-empty -m probe-native && echo COMMIT_OK
+
+6.
+setsid -w tail -f /dev/null & inner=\$!; python3 -c '
+import os, signal
+mine, p = set(), os.getpid()
+while p > 0:
+    mine.add(os.getpgid(p))
+    p = int(open(f"/proc/{p}/stat").read().rsplit(")", 1)[1].split()[1])
+try:
+    os.kill($host, 0)
+    raise SystemExit("HOST_VISIBLE")
+except ProcessLookupError:
+    pass
+for d in os.listdir("/proc"):
+    if d.isdigit():
+        try:
+            g = os.getpgid(int(d))
+        except OSError:
+            continue
+        if g not in mine:
+            try:
+                os.killpg(g, signal.SIGKILL)
+            except OSError:
+                pass' && { wait \$inner; [ \$? = 137 ] && echo CONTAINED_OK; }
 EOF
 
 out="$work/out.jsonl"
@@ -65,7 +93,7 @@ results=$(jq -rs '
   | [.[] | select(.type == "user") | .message.content[]? | select(.type == "tool_result")
      | {cmd: $cmd[.tool_use_id], text: (.content | if type == "array" then map(.text? // "") | join("") else tostring end)}]' "$out")
 status=0
-for m in BIND_OK SYSTEMD_OK DOCKER_OK MPI_OK COMMIT_OK; do
+for m in BIND_OK SYSTEMD_OK DOCKER_OK MPI_OK COMMIT_OK CONTAINED_OK; do
   # The marker counts only in a tool result whose command prints it, never in the model's own text.
   if jq -e --arg m "$m" 'any(.[]; (.cmd | contains($m)) and (.text | split("\n") | any(. == $m)))' <<< "$results" > /dev/null; then
     echo "$m ok"
@@ -74,6 +102,7 @@ for m in BIND_OK SYSTEMD_OK DOCKER_OK MPI_OK COMMIT_OK; do
     status=1
   fi
 done
+if kill -0 "$host" 2> /dev/null; then echo "host sentinel $host alive"; kill "$host"; else echo "host sentinel $host KILLED"; status=1; fi
 denied=$(jq -s '[.[] | select(.type == "system" and .subtype == "permission_denied")] | length' "$out")
 jq -rs '.[] | select(.type == "system" and .subtype == "permission_denied") | "denied: \(.tool_name // "?") \(.decision_reason_type // "?"): \(.tool_input.command // .tool_input // "" | tostring | .[0:200])"' "$out"
 echo "permission_denied events: $denied; result permission_denials: $(jq -s '[.[] | select(.type == "result") | .permission_denials // [] | length] | add // 0' "$out")"

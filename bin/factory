@@ -2564,6 +2564,12 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
 # settings, which carry the user tier for a Loam target; another target's worker loads the user tier itself.
 worker_skill_settings() { if target_is_loam; then printf '%s\n' "$RUN/frozen/worker-settings.json"; else user_settings; fi; }
 
+# Bash with the sandbox off (another target's worker, worker-settings-native.json; every verifier, role-settings.json)
+# runs on the host, where a test that signals every process group reached the owner's whole session (distbench
+# R543's 13 Nov host kill). Such a call runs in a fresh PID namespace: its /proc lists, and its signals reach, only
+# the call's own processes. Linux only, where bubblewrap is a precondition.
+call_ns() { CALL_NS=(); [ "$(uname -s)" != Linux ] || CALL_NS=(bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc); }
+
 # The Claude worker's command, from bin/claude-account on, into WORKER_CMD; bin/factory.d/probe-native.sh runs the same
 # array. A Loam target keeps the sandboxed shell: no settings tier but the frozen copy, in bypassPermissions. Another
 # target gets the native shell (design-pick.md (a)): its user, project and local tiers load as in an attended session,
@@ -2574,7 +2580,8 @@ worker_cmd() {
   target_is_loam || shell=(--permission-mode auto --strict-mcp-config --setting-sources user,project,local --settings "$RUN/frozen/worker-settings.json")
   pd=$(run_plugin_dir)
   [ -z "$pd" ] || shell+=(--plugin-dir "$pd")
-  WORKER_CMD=("$ROOT/bin/claude-account" exec env LOAM_CHECKS="$RUN/frozen/checks.sh"
+  CALL_NS=(); target_is_loam || call_ns
+  WORKER_CMD=(${CALL_NS[@]+"${CALL_NS[@]}"} "$ROOT/bin/claude-account" exec env LOAM_CHECKS="$RUN/frozen/checks.sh"
     CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1
     ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p
     --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} "${shell[@]}" --max-turns "$MAX_TURNS"
