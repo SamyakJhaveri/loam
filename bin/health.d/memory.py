@@ -28,7 +28,7 @@ STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
 TICKS = re.compile(r"`+")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
-PARAGRAPH_BREAK = re.compile(r"(\n(?:[ \t]*\n)+)")
+BLOCK_START = re.compile(r" {0,3}(?:(?:[-+*]|\d{1,9}[.)]|#{1,6})(?:\s|$)|>)")
 BLOCK_SCALAR = re.compile(r"[>|][-+0-9]*")
 ABSOLUTE = re.compile(r"\b(never|always|must)\b", re.I)
 DATE_TAG = re.compile(r"\[[^\s\]]+ [0-9a-fA-F]{8} \d{4}-\d{2}-\d{2}\]")
@@ -91,19 +91,36 @@ def unfenced(lines: list) -> list:
     return out
 
 
-def blank_code_spans(paragraph: str) -> str:
-    """The paragraph with each inline code span blanked to spaces, its newlines kept. As in CommonMark, a run of n
-    backticks opens a span that the next run of exactly n backticks closes; a run with no such close is literal."""
-    out, i = [], 0
-    while m := TICKS.search(paragraph, i):
-        close = re.compile(f"(?<!`){m.group()}(?!`)").search(paragraph, m.end())
+def blank_code_spans(paragraph: list) -> list:
+    """The paragraph's lines with each inline code span blanked to spaces. As in CommonMark, a run of n backticks opens
+    a span that the next run of exactly n backticks closes; a run with no such close is literal."""
+    if not paragraph:
+        return []
+    text, out, i = "\n".join(paragraph), [], 0
+    while m := TICKS.search(text, i):
+        close = re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
         if close:
-            out.append(paragraph[i:m.start()] + re.sub(r"[^\n]", " ", paragraph[m.start():close.end()]))
+            out.append(text[i:m.start()] + re.sub(r"[^\n]", " ", text[m.start():close.end()]))
             i = close.end()
         else:
-            out.append(paragraph[i:m.end()])
+            out.append(text[i:m.end()])
             i = m.end()
-    return "".join(out) + paragraph[i:]
+    return ("".join(out) + text[i:]).split("\n")
+
+
+def prose(lines: list, outside: list) -> list:
+    """The lines with fenced and blank lines emptied and inline code spans blanked. A span stays in its paragraph, which
+    a blank or fenced line ends and a list item, heading or quote line starts, as in CommonMark."""
+    out, paragraph = [], []
+    for line, ok in zip(lines, outside):
+        if not ok or not line.strip() or BLOCK_START.match(line):
+            out += blank_code_spans(paragraph)
+            paragraph = []
+        if ok and line.strip():
+            paragraph.append(line)
+        else:
+            out.append("")
+    return out + blank_code_spans(paragraph)
 
 
 def build_index(folder: str, notes: list) -> str:
@@ -168,11 +185,8 @@ def lint_note(note: dict, stems: set) -> tuple:
                 fails.append(f"FAIL secret {f}:{n}: line matches the pattern of {label}")
     body = note["lines"][note["body"]:]
     outside = unfenced(body)
-    # Fenced lines become blank lines, so a fence also ends a paragraph and no code span crosses it.
-    prose = "\n".join(line if ok else "" for line, ok in zip(body, outside))
-    prose = "".join(part if k % 2 else blank_code_spans(part) for k, part in enumerate(PARAGRAPH_BREAK.split(prose)))
     history = False
-    for n, line, ok, text in zip(range(note["body"] + 1, len(note["lines"]) + 1), body, outside, prose.split("\n")):
+    for n, line, ok, text in zip(range(note["body"] + 1, len(note["lines"]) + 1), body, outside, prose(body, outside)):
         if not ok:
             continue
         history = history or line.rstrip() == "## History"

@@ -192,6 +192,11 @@ AFTER_CODE = {
     "ticks-in-info-string": ("```cmd``` text\n[[nowhere]]\n", 9),
     "span-stops-at-blank-line": ("`open\n\n[[nowhere]] `\n", 10),
     "unmatched-tick-run": ("``a` [[nowhere]]\n", 8),
+    "span-stops-at-bullet": ("- use the ` key\n- see [[nowhere]]\n- and `x`\n", 9),
+    "span-stops-at-numbered-item": ("run `x\n1. see [[nowhere]] `\n", 9),
+    "span-stops-at-heading": ("run `x\n## Links\n[[nowhere]] `\n", 10),
+    "span-stops-at-quote": ("run `x\n> see [[nowhere]] `\n", 9),
+    "span-stops-at-fence": ("run `x\n```\ncode\n```\n[[nowhere]] `\n", 12),
 }
 
 
