@@ -172,6 +172,7 @@ IN_CODE = {
     "text-after-ticks-is-no-close": "```\n``` text\n[[in-code]]\n```\n",
     "unclosed-fence": "```\n[[in-code]]\n",
     "multiline-span": "Example: `line one\n[[in-code]]\nline three`.\n",
+    "quoted-multiline-span": "> Example: `line one\n> [[in-code]]\n>line three`.\n",
     "double-tick-span": "``a ` [[in-code]]``\n",
     "longer-run-is-no-close": "`a ``` [[in-code]] `\n",
 }
@@ -195,6 +196,12 @@ AFTER_CODE = {
     "span-stops-at-bullet": ("- use the ` key\n- see [[nowhere]]\n- and `x`\n", 9),
     "span-stops-at-numbered-item": ("run `x\n1. see [[nowhere]] `\n", 9),
     "span-stops-at-heading": ("run `x\n## Links\n[[nowhere]] `\n", 10),
+    "span-stops-after-heading": ("## Run `x\nsee [[nowhere]] `\n", 9),
+    "span-stops-after-setext-heading": ("Example `key\n===\nsee [[nowhere]] and `x`\n", 10),
+    "span-stops-at-setext-dashes": ("run `x\n--\n[[nowhere]] `\n", 10),
+    "span-stops-at-thematic-break": ("run `x\n_ _ _\n[[nowhere]] `\n", 10),
+    "span-stops-after-quoted-heading": ("> # Run `x\n> see [[nowhere]] `\n", 9),
+    "span-stops-at-nested-item": ("- a\n  - b `x\n    - see [[nowhere]] `\n", 10),
     "span-stops-at-quote": ("run `x\n> see [[nowhere]] `\n", 9),
     "span-stops-at-fence": ("run `x\n```\ncode\n```\n[[nowhere]] `\n", 12),
 }

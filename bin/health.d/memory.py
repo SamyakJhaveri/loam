@@ -28,7 +28,9 @@ STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
 TICKS = re.compile(r"`+")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
-BLOCK_START = re.compile(r" {0,3}(?:(?:[-+*]|\d{1,9}[.)]|#{1,6})(?:\s|$)|>)")
+QUOTE = re.compile(r"(?:[ \t]*> ?)*")
+ITEM = re.compile(r"[ \t]*(?:[-+*]|\d{1,9}[.)])(?:\s|$)")
+ONE_LINE_BLOCK = re.compile(r"[ \t]*(?:#{1,6}(?:\s|$)|([-*_])(?:[ \t]*\1){2,}[ \t]*$|=+[ \t]*$|-+[ \t]*$)")
 BLOCK_SCALAR = re.compile(r"[>|][-+0-9]*")
 ABSOLUTE = re.compile(r"\b(never|always|must)\b", re.I)
 DATE_TAG = re.compile(r"\[[^\s\]]+ [0-9a-fA-F]{8} \d{4}-\d{2}-\d{2}\]")
@@ -92,11 +94,12 @@ def unfenced(lines: list) -> list:
 
 
 def blank_code_spans(paragraph: list) -> list:
-    """The paragraph's lines with each inline code span blanked to spaces. As in CommonMark, a run of n backticks opens
-    a span that the next run of exactly n backticks closes; a run with no such close is literal."""
+    """The paragraph's (quote prefix, content) lines, rejoined with each inline code span in the content blanked to
+    spaces. As in CommonMark, a run of n backticks opens a span that the next run of exactly n backticks closes; a run
+    with no such close is literal."""
     if not paragraph:
         return []
-    text, out, i = "\n".join(paragraph), [], 0
+    text, out, i = "\n".join(content for _, content in paragraph), [], 0
     while m := TICKS.search(text, i):
         close = re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
         if close:
@@ -105,21 +108,30 @@ def blank_code_spans(paragraph: list) -> list:
         else:
             out.append(text[i:m.end()])
             i = m.end()
-    return ("".join(out) + text[i:]).split("\n")
+    return [prefix + line for (prefix, _), line in zip(paragraph, ("".join(out) + text[i:]).split("\n"))]
 
 
 def prose(lines: list, outside: list) -> list:
-    """The lines with fenced and blank lines emptied and inline code spans blanked. A span stays in its paragraph, which
-    a blank or fenced line ends and a list item, heading or quote line starts, as in CommonMark."""
-    out, paragraph = [], []
+    """The lines with fenced and blank lines emptied and inline code spans blanked. As in CommonMark, a span stays in
+    its paragraph, inside one quote depth; a blank or fenced line or a change of quote depth ends a paragraph, a list
+    item starts one, and an ATX heading, setext underline or thematic break is a block of its own line. These match at
+    any indent, so nested blocks split too: a split CommonMark would not make can only expose a link, never hide one."""
+    out, paragraph, depth = [], [], 0
     for line, ok in zip(lines, outside):
-        if not ok or not line.strip() or BLOCK_START.match(line):
+        prefix = QUOTE.match(line).group() if ok else ""
+        content = line[len(prefix):]
+        one_line = ok and ONE_LINE_BLOCK.match(content)
+        if not ok or not content.strip() or prefix.count(">") != depth or one_line or ITEM.match(content):
             out += blank_code_spans(paragraph)
             paragraph = []
-        if ok and line.strip():
-            paragraph.append(line)
+        depth = prefix.count(">")
+        if ok and content.strip():
+            paragraph.append((prefix, content))
         else:
             out.append("")
+        if one_line:
+            out += blank_code_spans(paragraph)
+            paragraph = []
     return out + blank_code_spans(paragraph)
 
 
