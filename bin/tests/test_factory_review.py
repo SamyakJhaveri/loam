@@ -19,7 +19,9 @@ import unittest
 import unittest.mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-HOST_NS = sys.platform.startswith("linux") and len(open("/proc/self/status").read().split("NSpid:")[1].split("\n")[0].split()) == 1
+NS_OK = sys.platform.startswith("linux") and subprocess.run(
+    ["bwrap", "--dev-bind", "/", "/", "--unshare-pid", "--die-with-parent", "--proc", "/proc", "true"],
+    capture_output=True).returncode == 0 if shutil.which("bwrap") else False
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 AUDIT = ROOT / "cultivation/marketplace/sam-cc-setup/skills/audit"
 
@@ -217,7 +219,7 @@ class ReviewTests(unittest.TestCase):
         roles = [json.loads(x)["role"] for x in self.read("ledger.jsonl").splitlines()]
         self.assertEqual(roles, ["verifier"])
 
-    @unittest.skipUnless(sys.platform.startswith("linux") and HOST_NS, "a host PID namespace on Linux only: inside a child one the factory does not nest another")
+    @unittest.skipUnless(NS_OK, "bwrap cannot make a PID namespace here (not Linux, or inside a sandbox)")
     def test_the_verifier_runs_in_its_own_pid_namespace(self) -> None:
         # The verifier's Bash runs with the sandbox off, so its call runs in a PID namespace of its own (distbench
         # R543), whose signals cannot reach this test or any other host process.

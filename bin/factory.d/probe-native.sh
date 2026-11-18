@@ -30,11 +30,13 @@ printf 'exit 0\n' > "$RUN/frozen/checks.sh"   # the Stop hook's checks: nothing 
 MAX_TURNS=8
 worker_cmd
 
-# Command 6 is R543's kill loop (distbench): from the worker's own shell, signal 0 to this host sentinel must find no such
-# process, and SIGKILL to every process group outside the shell's own ancestry must end only the inner sentinel.
+# Command 6 is R543's kill loop (distbench): the worker's shell must be in another PID namespace than this probe, and
+# SIGKILL to every process group outside the shell's own ancestry must end its inner sentinel and leave this one alive.
 setsid tail -f /dev/null > /dev/null 2>&1 < /dev/null &
 host=$!
-trap 'kill "$host" 2> /dev/null' EXIT INT TERM
+trap 'kill "$host" 2> /dev/null' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 hostns=$(readlink /proc/self/ns/pid)
 cat > "$work/prompt.md" <<EOF
 This is a probe of your shell. Run each of these six commands in its own Bash call, in this order, exactly as written,
@@ -68,11 +70,6 @@ mine, p = set(), os.getpid()
 while p > 0:
     mine.add(os.getpgid(p))
     p = int(open(f"/proc/{p}/stat").read().rsplit(")", 1)[1].split()[1])
-try:
-    os.kill($host, 0)
-    raise SystemExit("HOST_VISIBLE")
-except ProcessLookupError:
-    pass
 for d in os.listdir("/proc"):
     if d.isdigit():
         try:

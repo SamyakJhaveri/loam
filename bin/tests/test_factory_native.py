@@ -25,7 +25,9 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-HOST_NS = sys.platform.startswith("linux") and len(open("/proc/self/status").read().split("NSpid:")[1].split("\n")[0].split()) == 1
+NS_OK = sys.platform.startswith("linux") and subprocess.run(
+    ["bwrap", "--dev-bind", "/", "/", "--unshare-pid", "--die-with-parent", "--proc", "/proc", "true"],
+    capture_output=True).returncode == 0 if shutil.which("bwrap") else False
 BASE = "83b59cf2"  # the commit U3 branched from: today's bin/factory, the Loam-target reference
 HOME_PATHS = ("bin/factory", "bin/factory.d", "bin/claude-account", "bin/alert", "bin/factory-parity",
               "cultivation/marketplace/sam-cc-setup")
@@ -280,7 +282,7 @@ class NativeShellTests(unittest.TestCase):
         # The skill resolves through the user tier's enabledPlugins, which the frozen file no longer carries.
         self.assertIn(f"read {self.h.pstack}/skills/tdd/SKILL.md", r["worker"]["stdin"])
 
-    @unittest.skipUnless(sys.platform.startswith("linux") and HOST_NS, "a host PID namespace on Linux only: inside a child one the factory does not nest another")
+    @unittest.skipUnless(NS_OK, "bwrap cannot make a PID namespace here (not Linux, or inside a sandbox)")
     def test_another_targets_worker_runs_in_its_own_pid_namespace(self) -> None:
         # The native worker's Bash runs with the sandbox off, so its call runs in a PID namespace of its own (distbench
         # R543), whose signals cannot reach this test or any other host process.
