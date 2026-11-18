@@ -26,8 +26,9 @@ MAX_NOTE_BYTES = 102_400
 MAX_DESCRIPTION = 120
 STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
-CODE_SPAN = re.compile(r"(`+).*?\1")
-FENCE = re.compile(r" {0,3}(```|~~~)")
+TICKS = re.compile(r"`+")
+FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
+PARAGRAPH_BREAK = re.compile(r"(\n(?:[ \t]*\n)+)")
 BLOCK_SCALAR = re.compile(r"[>|][-+0-9]*")
 ABSOLUTE = re.compile(r"\b(never|always|must)\b", re.I)
 DATE_TAG = re.compile(r"\[[^\s\]]+ [0-9a-fA-F]{8} \d{4}-\d{2}-\d{2}\]")
@@ -70,6 +71,39 @@ def read_note(path: str) -> dict:
                     fields["metadata.type"] = unquote(value.strip())
             note["fields"], note["body"] = fields, end + 1
     return note
+
+
+def unfenced(lines: list) -> list:
+    """Per line, whether it is outside fenced code. As in CommonMark, a fence opens on 0-3 spaces and a run of three or
+    more backticks (with no backtick after it) or tildes, and closes only on 0-3 spaces, a run of the same character at
+    least as long and nothing but whitespace; an unclosed fence runs to the end."""
+    out, close = [], None
+    for line in lines:
+        if close:
+            out.append(False)
+            if close.fullmatch(line):
+                close = None
+            continue
+        m = FENCE.match(line)
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            close = re.compile(r" {0,3}%s{%d,}\s*" % (re.escape(m.group(1)[0]), len(m.group(1))))
+        out.append(close is None)
+    return out
+
+
+def blank_code_spans(paragraph: str) -> str:
+    """The paragraph with each inline code span blanked to spaces, its newlines kept. As in CommonMark, a run of n
+    backticks opens a span that the next run of exactly n backticks closes; a run with no such close is literal."""
+    out, i = [], 0
+    while m := TICKS.search(paragraph, i):
+        close = re.compile(f"(?<!`){m.group()}(?!`)").search(paragraph, m.end())
+        if close:
+            out.append(paragraph[i:m.start()] + re.sub(r"[^\n]", " ", paragraph[m.start():close.end()]))
+            i = close.end()
+        else:
+            out.append(paragraph[i:m.end()])
+            i = m.end()
+    return "".join(out) + paragraph[i:]
 
 
 def build_index(folder: str, notes: list) -> str:
@@ -132,14 +166,17 @@ def lint_note(note: dict, stems: set) -> tuple:
         for label, pattern in SECRETS:
             if pattern.search(line):
                 fails.append(f"FAIL secret {f}:{n}: line matches the pattern of {label}")
-    fenced = history = False
-    for n, line in enumerate(note["lines"][note["body"]:], note["body"] + 1):
-        if FENCE.match(line):
-            fenced = not fenced
-        if fenced:
+    body = note["lines"][note["body"]:]
+    outside = unfenced(body)
+    # Fenced lines become blank lines, so a fence also ends a paragraph and no code span crosses it.
+    prose = "\n".join(line if ok else "" for line, ok in zip(body, outside))
+    prose = "".join(part if k % 2 else blank_code_spans(part) for k, part in enumerate(PARAGRAPH_BREAK.split(prose)))
+    history = False
+    for n, line, ok, text in zip(range(note["body"] + 1, len(note["lines"]) + 1), body, outside, prose.split("\n")):
+        if not ok:
             continue
         history = history or line.rstrip() == "## History"
-        for slug in LINK.findall(CODE_SPAN.sub("", line)):
+        for slug in LINK.findall(text):
             if slug not in stems:
                 fails.append(f"FAIL link {f}:{n}: [[{slug}]] names no {slug}.md note")
         word = ABSOLUTE.search(line)

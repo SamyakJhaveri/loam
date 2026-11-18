@@ -164,6 +164,46 @@ def test_lint_fails_a_planted_fault_by_its_rule_only(tmp_path, case):
     assert fail_rules(r.stdout) == {case.split("-")[0]}
 
 
+# A [[link]] inside code is no link, so the note lints clean.
+IN_CODE = {
+    "nested-fence": "````\n```bash\n[[in-code]]\n```\n````\n",
+    "backticks-in-tildes": "~~~\n```\n[[in-code]]\n~~~\n",
+    "longer-close": "```\n[[in-code]]\n`````  \n",
+    "text-after-ticks-is-no-close": "```\n``` text\n[[in-code]]\n```\n",
+    "unclosed-fence": "```\n[[in-code]]\n",
+    "multiline-span": "Example: `line one\n[[in-code]]\nline three`.\n",
+    "double-tick-span": "``a ` [[in-code]]``\n",
+    "longer-run-is-no-close": "`a ``` [[in-code]] `\n",
+}
+
+
+@pytest.mark.parametrize("case", IN_CODE)
+def test_lint_skips_a_link_in_code(tmp_path, case):
+    d = folder(tmp_path)
+    note(d, "hosts", "Host facts", "reference", body=IN_CODE[case])
+    r = run("lint", d)
+    assert (r.returncode, r.stdout) == (0, b"lint: 6 notes, 0 FAIL, 0 NOTE\n")
+
+
+# A broken [[link]] after something that only looks like code, or after code that has closed, still FAILs on its line.
+AFTER_CODE = {
+    "tildes-in-backticks": ("```text\n~~~\n```\n[[nowhere]]\n", 11),
+    "short-close": ("````\n```\n````\n[[nowhere]]\n", 11),
+    "ticks-in-info-string": ("```cmd``` text\n[[nowhere]]\n", 9),
+    "span-stops-at-blank-line": ("`open\n\n[[nowhere]] `\n", 10),
+    "unmatched-tick-run": ("``a` [[nowhere]]\n", 8),
+}
+
+
+@pytest.mark.parametrize("case", AFTER_CODE)
+def test_lint_fails_a_broken_link_outside_code(tmp_path, case):
+    body, line = AFTER_CODE[case]
+    d = folder(tmp_path)
+    note(d, "hosts", "Host facts", "reference", body=body)
+    r = run("lint", d)
+    assert (r.returncode, re.findall(rb"^FAIL (\S+ \S+):", r.stdout, re.M)) == (1, [f"link hosts.md:{line}".encode()])
+
+
 def test_lint_rule_limits_are_inclusive(tmp_path):
     d = folder(tmp_path)
     note(d, "git-traps", "x" * 120, "reference")
