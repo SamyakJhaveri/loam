@@ -37,6 +37,7 @@ def folder(tmp: Path) -> Path:
     note(d, "plain_words", "'Plain words'", "feedback")
     note(d, "the-project", "Project note", "project")
     note(d, "about-him", "Who he is", "user")
+    (d / "attic.md").mkdir()  # a folder is not a note
     return d
 
 
@@ -78,10 +79,11 @@ def test_index_puts_other_types_last_and_drops_an_empty_description(tmp_path):
     note(d, "odd", "Odd one", "musing")
     (d / "bare.md").write_text("---\nname: bare\nmetadata:\n  type: user\n---\n")
     (d / "loose.md").write_text("no frontmatter\n")
+    (d / "spaced.md").write_text("---\nname: spaced\nmetadata:\n\n  type: user\n---\n")
     r = run("index", d)
     assert r.returncode == 0
     assert r.stdout.startswith(b"# MEMORY\n\n## Tool and host facts\n")
-    assert r.stdout.endswith(b"- [About him](about-him.md) - Who he is\n- [Bare](bare.md)\n\n"
+    assert r.stdout.endswith(b"- [About him](about-him.md) - Who he is\n- [Bare](bare.md)\n- [Spaced](spaced.md)\n\n"
                              b"## Unsorted\n- [Loose](loose.md)\n- [Odd](odd.md) - Odd one\n")
 
 
@@ -95,7 +97,7 @@ def test_index_is_the_same_bytes_whatever_the_write_order_or_file_times(tmp_path
     b = tmp_path / "copy"
     b.mkdir()
     for f in sorted(a.iterdir(), reverse=True):
-        shutil.copy(f, b / f.name)
+        (b / f.name).mkdir() if f.is_dir() else shutil.copy(f, b / f.name)
     (b / "hosts.md").touch()
     assert run("index", a).stdout == run("index", a).stdout == run("index", b).stdout == WANT
 
@@ -133,6 +135,7 @@ def big(d: Path, size: int) -> None:
 # Each case plants one fault in a clean folder.
 FAULTS = {
     "frontmatter": lambda d: (d / "loose.md").write_text("just text\n"),
+    "frontmatter-empty": lambda d: (d / "empty.md").write_text(""),
     "frontmatter-unclosed": lambda d: (d / "open.md").write_text("---\nname: open\n"),
     "name": lambda d: (d / "hosts.md").write_text((d / "hosts.md").read_text().replace("name: hosts", "name: host")),
     "description-missing": lambda d: (d / "bare.md").write_text("---\nname: bare\nmetadata:\n  type: user\n---\n"),

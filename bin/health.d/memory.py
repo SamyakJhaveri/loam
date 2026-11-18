@@ -136,7 +136,6 @@ def lint_note(note: dict, stems: set) -> tuple:
     for n, line in enumerate(note["lines"][note["body"]:], note["body"] + 1):
         if FENCE.match(line):
             fenced = not fenced
-            continue
         if fenced:
             continue
         history = history or line.rstrip() == "## History"
