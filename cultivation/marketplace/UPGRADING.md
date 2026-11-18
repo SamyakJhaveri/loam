@@ -6,10 +6,10 @@ entry point for projects that consume the Loam marketplace.
 ## sam-cc-setup v0.9.42 a hook refuses other spellings of a denied Bash command
 
 Claude Code matches a `Bash(...)` deny rule against the command text, so git's global options before the subcommand and `--opt=value` hide a denied command: on 17 Nov 2026 an agent ran `git -C <dir> push --force-with-lease=<branch>:<sha> origin <branch>` past `Bash(git push --force-with-lease:*)`.
-PreToolUse on `Bash` now rewrites each part of a command to its plain form, with git's global options (`-C`, `-c`, `--git-dir`, `--work-tree`, `--no-pager` and the rest) dropped, `--opt=value` split, quotes removed, a program path cut to its name, and assignments and wrappers (`env`, `sudo`, `exec`, `timeout` and the like) dropped, and refuses when that form matches a deny rule the written part does not; it also checks `$(...)`, backticks and `bash -c` scripts.
+PreToolUse on `Bash` now rewrites each part of a command to its plain form, with git's global options (`-C`, `-c`, `--git-dir`, `--work-tree`, `--no-pager` and the rest) dropped, `--opt=value` split, quotes removed, a program path cut to its name, and assignments and wrappers (`env`, `sudo`, `exec`, `timeout` and the like) dropped, puts options before arguments (also with joined short flags such as `-fd` split, and with each option first in turn), counts a `git push` refspec starting `+` as `--force`, and refuses when such a form matches a deny rule the written part does not; it also checks `$(...)`, backticks and `bash -c` scripts.
 It reads `permissions.deny` from the user, project, local project and managed settings, and does nothing when they hold no `Bash(...)` deny rule.
 Replayed on the owner's recorded Bash calls of one day: it refused only force pushes that had slipped past the deny rules, and no other call.
-Known gaps, in the hook's docstring: option order (`git push origin b --force`), joined short flags (`git clean -fd`), a `+refspec` push, and `eval` or a variable running the command.
+Known gaps, in the hook's docstring: a rule naming two options in an order the command does not use, an option whose value starts with `-`, and `eval` or a variable running the command.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code (or run `/hooks`).
 

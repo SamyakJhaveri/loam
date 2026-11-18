@@ -5,16 +5,18 @@ Claude Code matches a Bash deny rule against each part's text, after stripping `
 other wrappers, so another spelling of the same command passes the rule. On 17 Nov 2026 an agent ran
 `git -C <dir> push --force-with-lease=<branch>:<sha> origin <branch>` past `Bash(git push --force-with-lease:*)`:
 git's global options came before the subcommand, and `--opt=value` is not `--opt value`.
-The hook rewrites each part to its plain form and refuses when that form matches a deny rule the part as
+The hook rewrites each part to its plain forms and refuses when one matches a deny rule the part as
 written does not: git's global options (`-C`, `-c`, `--git-dir`, `--work-tree`, `--no-pager` and the rest)
 dropped, `--opt=value` split, quotes removed, a program path cut to its name, and keywords, assignments and
-wrappers (`env`, `sudo`, `exec` and Claude Code's own) dropped. It also checks the scripts inside
-`$(...)`, backticks and `bash -c`, where the rule never looks.
+wrappers (`env`, `sudo`, `exec` and Claude Code's own) dropped. Each form puts the options before the
+arguments (`git push origin b --force`), once as written and once with joined short flags split
+(`git clean -fd`), and also with each option first in turn; a `git push` refspec starting `+` counts as
+`--force`. It also checks the scripts inside `$(...)`, backticks and `bash -c`, where the rule never looks.
 It reads `permissions.deny` from the user (`$CLAUDE_CONFIG_DIR`, else `~/.claude`), project
 (`$CLAUDE_PROJECT_DIR`), local project and managed settings.
 
-This is a scan for the spellings an agent writes, not a shell parser. Known gaps, all allowed: option
-order (`git push origin b --force`), joined short flags (`git clean -fd`), a `+refspec` push, a wrapper
+This is a scan for the spellings an agent writes, not a shell parser. Known gaps, all allowed: a rule
+naming two options in an order the command does not use, an option whose value starts with `-`, a wrapper
 option with an operand (`sudo -u x`, `env -C dir`), and `eval`, `xargs` with flags, `find -exec` or a
 variable running the command.
 """
@@ -38,6 +40,7 @@ SHELLS = {"bash", "sh", "zsh", "dash"}
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 NUMBER = re.compile(r"[0-9.]+[smhd]?")
 BRACE = re.compile(r"\{[^{}]*(?:,|\.\.)[^{}]*\}")
+SHORT_FLAGS = re.compile(r"-[A-Za-z]{2,}")  # joined short flags such as -fd
 # git's global options that take the next word as their value (git(1)); every other leading option takes none.
 GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix",
                      "--attr-source"}
@@ -169,9 +172,9 @@ class Scan:
 
 
 
-def plain(part: list[tuple[str, str]]) -> list[str]:
-    """The part's words as a deny rule expects them: no keywords, assignments, wrappers, program path,
-    git global options or `--opt=value` joins."""
+def forms(part: list[tuple[str, str]]) -> list[list[str]]:
+    """The part's words as a deny rule expects them: no keywords, assignments, wrappers, program path, git
+    global options or `--opt=value` joins, and the options before the arguments; [] when nothing runs."""
     words = [cooked for _, cooked in part]
     i = 0
     while i < len(words):
@@ -185,22 +188,37 @@ def plain(part: list[tuple[str, str]]) -> list[str]:
             break
     if i == len(words):
         return []
-    name, args = os.path.basename(words[i]), words[i + 1:]
-    if name == "git":
+    head, args = [os.path.basename(words[i])], words[i + 1:]
+    if head == ["git"]:
         while args and args[0].startswith("-"):
             args = args[2:] if args[0] in GIT_VALUE_OPTIONS else args[1:]
+        head, args = head + args[:1], args[1:]  # the subcommand leads, as in the rule
     split = []
     for word in args:
         option, equals, value = word.partition("=")
         split += [option, value] if equals and option.startswith("--") and len(option) > 2 else [word]
-    return [name, *split]
+    options, arguments = [], []
+    for k, word in enumerate(split):
+        if word == "--":
+            arguments += split[k:]
+            break
+        (options if word.startswith("-") and word != "-" else arguments).append(word)
+    if head == ["git", "push"] and any(word.startswith("+") for word in arguments[1:]):
+        options.append("--force")  # git push origin +branch forces that ref
+    joined = [flag for option in options
+              for flag in (["-" + c for c in option[1:]] if SHORT_FLAGS.fullmatch(option) else [option])]
+    found = [head + split]
+    for opts in (options, joined):
+        found += [head + opts + arguments]
+        found += [head + [o, *opts[:k], *opts[k + 1:]] + arguments for k, o in enumerate(opts)]
+    return [f for k, f in enumerate(found) if f not in found[:k]]
 
 
 def scripts(scan: Scan) -> list[str]:
     """The scripts a part runs that a deny rule never sees: `$(...)`, backticks and `bash -c '...'`."""
     found = list(scan.bodies)
     for part in scan.parts:
-        words = plain(part)
+        words = (forms(part) or [[]])[0]
         if words and words[0] in SHELLS:
             found += [words[k + 1] for k, flag in enumerate(words[1:-1], 1)
                       if flag.startswith("-") and not flag.startswith("--") and "c" in flag][:1]
@@ -235,13 +253,14 @@ def pattern(rule: str) -> re.Pattern[str]:
 
 
 def refusal(command: str, rules: list[tuple[str, re.Pattern[str]]], nested: bool = False) -> str:
-    """The first part whose plain form a deny rule names and its written form does not, explained; else ""."""
+    """The first part with a plain form a deny rule names and its written form does not, explained; else ""."""
     scan = Scan(command)
     for part in scan.parts:
-        written, words = " ".join(raw for raw, _ in part), plain(part)
+        written, plain = " ".join(raw for raw, _ in part), [" ".join(f) for f in forms(part)]
         for rule, regex in rules:
-            if words and regex.fullmatch(" ".join(words)) and (nested or not regex.fullmatch(written)):
-                return (f"Refused: `{written[:200]}` runs `{' '.join(words)[:200]}`, which the deny rule `{rule}` "
+            words = next((w for w in plain if regex.fullmatch(w)), "")
+            if words and (nested or not regex.fullmatch(written)):
+                return (f"Refused: `{written[:200]}` runs `{words[:200]}`, which the deny rule `{rule}` "
                         "names. The rule matches command text, so this spelling slipped past it, but it still "
                         "means no. Do not respell the command; if the step is needed, ask the owner to run it.")
     for script in scripts(scan):

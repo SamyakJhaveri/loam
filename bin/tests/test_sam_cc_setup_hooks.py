@@ -149,6 +149,12 @@ class GitDenySpellingTest(Home):
         "env FOO=1 sudo rm -rf build",
         "bash -c 'git push --force origin b'",
         "echo $(git -C . stash drop)",
+        "git push origin +topic",
+        "git push -u origin topic --force",
+        "git clean -fd",
+        "git clean -xdf",
+        "git reset HEAD~1 --hard",
+        "rm build -rf",
     )
     ALLOWED = (
         "git -C x push origin b",
@@ -158,6 +164,10 @@ class GitDenySpellingTest(Home):
         "git commit -F - <<'EOF'\ngit -C y push --force\nEOF",
         "git -c core.pager=cat reset --soft HEAD~1",
         "rm -r -v build",
+        "git push origin topic:topic",
+        "git clean -n",
+        "git commit -am 'adds +x and --force docs'",
+        "git log --oneline -5 -- +x",
     )
 
     def setUp(self) -> None:
