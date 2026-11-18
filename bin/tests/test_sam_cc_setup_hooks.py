@@ -138,10 +138,10 @@ class ForegroundSleepTest(unittest.TestCase):
 
 
 class GitDenySpellingTest(Home):
-    # The first four ran past `Bash(git push --force-with-lease:*)` and friends in distbench sessions on 17 Nov 2026.
+    # The first two are the shapes that slipped past prefix deny rules in use: global options and `--opt=value`.
     REFUSED = (
-        "git -C /wt push --force-with-lease=tickets/fs4-j309-j310:f25909e23 origin tickets/fs4-j309-j310",
-        "git -C /wt push --force-with-lease origin feat/b2-b4-rows",
+        "git -C /wt push --force-with-lease=topic:f25909e23 origin topic",
+        "git -C /wt push --force-with-lease origin topic",
         "git -C x reset --hard",
         "cd x && /usr/bin/git --no-pager -c a=b clean -f -d",
         "git --git-dir=.git --work-tree . push -f",
