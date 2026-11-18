@@ -3,6 +3,16 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.41 a hook refuses ssh, scp and gh calls the sandbox would run sandboxed
+
+A program in `sandbox.excludedCommands` runs outside the sandbox only when the whole command is bare, so `ssh host '...' | grep x` runs sandboxed and fails ("Could not resolve hostname"; gh: "tls: failed to verify certificate"), and a piped gh error can read as "no failures".
+PreToolUse on `Bash` now refuses an `ssh`, `scp` or `gh` call that the settings exempt when it has a local pipe, a redirect other than `2>&1`, a heredoc, `$(`, backticks, `<(` or a `{a,b}` brace expansion, a chain part (`&&`, `||`, `;`) that is not itself an excluded program, or `$(`, `$((`, a backtick, `<(` or a word starting `=name` inside its quoted arguments; it prints each ssh, scp or gh part as a bare call to run on its own.
+It acts only when a settings file enables the sandbox and an excluded pattern names the program.
+From the distbench /reflect of 17 November 2026; replayed against the ssh, scp and gh calls of the session it reviewed, it refused every call that failed and allowed every call that ran bare.
+The same day's measurements show that `ssh ... && scp ...`, `ssh ...; ssh ...` and `2>&1` run bare, and so do a multi-line quoted remote script and a `'"'"'` escape.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code (or run `/hooks`).
+
 ## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
 
 The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.

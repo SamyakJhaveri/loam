@@ -137,6 +137,80 @@ class ForegroundSleepTest(unittest.TestCase):
                             'cat <<"EOF.1"\nsleep 5\nEOF.1')
 
 
+class RemoteCommandShapeTest(Home):
+    # Each shape ran in the Mac sandbox on 17 Nov 2026 with ssh, scp and gh excluded, or is a synthetic copy of a call shape seen to fail.
+    SANDBOXED = (
+        "ssh host hostname | cat",
+        "ssh host hostname && ls /tmp",
+        "cd ~/proj; gh pr list -R o/r --state open",
+        "ssh host hostname 2>/dev/null",
+        "ssh host hostname > out.txt",
+        "ssh host 'hostname' < /dev/null",
+        "ssh -o BatchMode=yes host 'bash -s' <<'EOF'\ncd ~/proj\ngit status\nEOF",
+        "ssh host 'echo $(hostname)'",
+        "ssh host 'sed -n \"${n},$((n+30))p\" f'",
+        "ssh host 'cat <(echo hi)'",
+        "ssh host 'tmux capture-pane -p -t =work-window -S -60 | tail -60'",
+        "ssh host echo {a,b}",
+        "scp -q dir/{a.md,b.py} host:x/",
+        "for n in 1 2; do gh pr view $n -R o/r; done",
+        "x=$(gh pr view 1 -R o/r --json state)",
+        "timeout 10 ssh host hostname",
+        'gh pr create --title t --body "see `bin/check`"',
+        "gh run view 4 -R o/r --log-failed 2>&1 | grep -E 'FAILED' | head -15",
+    )
+    BARE = (
+        "ssh host hostname",
+        "ssh host hostname && scp host:/etc/hostname copy",
+        "ssh host hostname; ssh host 'echo second'",
+        "ssh host 'echo a; echo b' 2>&1",
+        "ssh host echo $USER",
+        "ssh host echo /etc/host*",
+        "ssh host 'cd ~/x && grep -c ok log | wc -l; echo =====; F=~/y; ls $F'",
+        "ssh host 'python3 - <<\"EOF\"\nprint(1)\nEOF'",
+        "ssh host 'printf \"%s\\n\" \"Sam'\"'\"'s line\" >> notes.md'",
+        "ssh host \"grep -rhoE 'x{0,120}' ~/notes\"",
+        "gh pr list -R o/r --json number --jq '.[] | \"\\(.number)\"'",
+        "gh pr create --body-file body.md --title 'plain words'",
+        "git grep -n 'ssh host' -- docs | head -3",
+        "echo 'run gh pr checks 9 later' > note.txt",
+    )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(".claude/settings.json", json.dumps({"sandbox": {"excludedCommands": ["codex exec *"]}}))
+        self.write("project/.claude/settings.json", json.dumps(
+            {"sandbox": {"enabled": True, "excludedCommands": ["ssh *", "scp *", "rsync *", "gh *"]}}))
+
+    def bash(self, command: str) -> subprocess.CompletedProcess[str]:
+        return run("remote-command-shape.py", {"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                                               "tool_input": {"command": command}}, self.env)
+
+    def test_sandboxed_shapes_refused(self) -> None:
+        for command in self.SANDBOXED:
+            r = self.bash(command)
+            self.assertEqual(r.returncode, 2, command)
+            self.assertIn("Bare rewrite", r.stderr)
+
+    def test_bare_shapes_and_data_pass(self) -> None:
+        for command in self.BARE:
+            r = self.bash(command)
+            self.assertEqual(r.returncode, 0, f"{command}\n{r.stderr}")
+
+    def test_rewrite_is_the_bare_call(self) -> None:
+        r = self.bash("cd /tmp && ssh host 'grep -c ok log' 2>/dev/null | head -3")
+        self.assertIn("\n  ssh host 'grep -c ok log'\n", r.stderr)
+        self.assertIn("`cd /tmp` is not an excluded program", r.stderr)
+
+    def test_no_refusal_without_an_exclusion_or_a_sandbox(self) -> None:
+        self.write("project/.claude/settings.json", json.dumps({"sandbox": {"enabled": True}}))
+        self.assertEqual(self.bash("ssh host hostname | cat").returncode, 0, "ssh is not excluded")
+        self.write("project/.claude/settings.json", json.dumps({"sandbox": {"excludedCommands": ["ssh *"]}}))
+        self.assertEqual(self.bash("ssh host hostname | cat").returncode, 0, "the sandbox is off")
+        self.write("project/.claude/settings.local.json", json.dumps({"sandbox": {"enabled": True}}))
+        self.assertEqual(self.bash("ssh host hostname | cat").returncode, 2, "settings.local.json enables it")
+
+
 class PromptContextTest(Home):
     def prompt(self, text: str) -> str:
         r = run("prompt-context.py", {"hook_event_name": "UserPromptSubmit", "prompt": text}, self.env)
@@ -181,6 +255,7 @@ class HooksJsonTest(unittest.TestCase):
                  for event, groups in hooks.items() for group in groups for h in group["hooks"]}
         self.assertEqual(wired, {("PreToolUse", "Agent", "agent-route.py"),
                                  ("PreToolUse", "Bash", "no-foreground-sleep.py"),
+                                 ("PreToolUse", "Bash", "remote-command-shape.py"),
                                  ("UserPromptSubmit", "", "prompt-context.py")})
         for _, _, script in wired:
             self.assertTrue((HOOKS / script).is_file(), script)
