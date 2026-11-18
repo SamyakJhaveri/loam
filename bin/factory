@@ -2575,7 +2575,7 @@ call_ns() {
   CALL_NS=()
   [ "$(uname -s)" = Linux ] || return 0
   local t
-  t="${TMPDIR:-/tmp}/loam-ns-$(printf '%s' "$RUN" | sha256sum | cut -c1-16)"
+  t="${TMPDIR:-/tmp}/loam-ns-$(realpath -m "$RUN" | tr -d '\n' | sha256sum | cut -c1-16)"
   mkdir -p -m 700 "$t" && chmod 700 "$t"
   CALL_NS=(bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc --setenv TMUX_TMPDIR "$t" --unsetenv TMUX)
 }
