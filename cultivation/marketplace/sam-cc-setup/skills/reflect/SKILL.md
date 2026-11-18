@@ -22,6 +22,8 @@ ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcrip
 
 That covers the legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`) layouts. For each candidate, read the first JSONL line. Take the file whose `message.content[0].text` contains the conversation's opening user prompt. If none matches, pass a tight digest of the session instead.
 
+Copy that file into the findings folder you make in step 2, and give every reviewer and the synthesizer the copy's path, its `sha256sum` and its line count, so all read the same lines.
+
 ## 2. Spawn three reviewers
 
 Make a findings folder `<dir>` (a fresh `mktemp -d`, or the run's evidence folder). Start reviewers as agent slots free under the session's cap, each a `Task` call, `subagent_type: worker` where `worker` is a defined agent type (the plugin's agent-route hook then refuses `general-purpose`), else `general-purpose`, agent mode (`readonly: false`). Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, and readonly strips MCPs.
