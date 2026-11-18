@@ -32,8 +32,10 @@ worker_cmd
 
 # Command 6 is R543's kill loop (distbench): from the worker's own shell, signal 0 to this host sentinel must find no such
 # process, and SIGKILL to every process group outside the shell's own ancestry must end only the inner sentinel.
-setsid sleep 900 > /dev/null 2>&1 < /dev/null &
+setsid tail -f /dev/null > /dev/null 2>&1 < /dev/null &
 host=$!
+trap 'kill "$host" 2> /dev/null' EXIT INT TERM
+hostns=$(readlink /proc/self/ns/pid)
 cat > "$work/prompt.md" <<EOF
 This is a probe of your shell. Run each of these six commands in its own Bash call, in this order, exactly as written,
 whatever an earlier one printed. Then reply with the single word done.
@@ -60,6 +62,8 @@ git -C $clone -c user.name=probe -c user.email=probe@example.invalid commit -q -
 6.
 setsid -w tail -f /dev/null & inner=\$!; python3 -c '
 import os, signal
+if os.readlink("/proc/self/ns/pid") == "$hostns":
+    raise SystemExit("NOT_CONTAINED")
 mine, p = set(), os.getpid()
 while p > 0:
     mine.add(os.getpgid(p))
@@ -79,7 +83,7 @@ for d in os.listdir("/proc"):
             try:
                 os.killpg(g, signal.SIGKILL)
             except OSError:
-                pass' && { wait \$inner; [ \$? = 137 ] && echo CONTAINED_OK; }
+                pass' && { wait \$inner; [ \$? = 137 ] && echo CONTAINED_OK; }; kill \$inner 2> /dev/null
 EOF
 
 out="$work/out.jsonl"
@@ -102,7 +106,7 @@ for m in BIND_OK SYSTEMD_OK DOCKER_OK MPI_OK COMMIT_OK CONTAINED_OK; do
     status=1
   fi
 done
-if kill -0 "$host" 2> /dev/null; then echo "host sentinel $host alive"; kill "$host"; else echo "host sentinel $host KILLED"; status=1; fi
+if kill -0 "$host" 2> /dev/null; then echo "host sentinel $host alive"; else echo "host sentinel $host KILLED"; status=1; fi
 denied=$(jq -s '[.[] | select(.type == "system" and .subtype == "permission_denied")] | length' "$out")
 jq -rs '.[] | select(.type == "system" and .subtype == "permission_denied") | "denied: \(.tool_name // "?") \(.decision_reason_type // "?"): \(.tool_input.command // .tool_input // "" | tostring | .[0:200])"' "$out"
 echo "permission_denied events: $denied; result permission_denials: $(jq -s '[.[] | select(.type == "result") | .permission_denials // [] | length] | add // 0' "$out")"

@@ -2567,8 +2567,15 @@ worker_skill_settings() { if target_is_loam; then printf '%s\n' "$RUN/frozen/wor
 # Bash with the sandbox off (another target's worker, worker-settings-native.json; every verifier, role-settings.json)
 # runs on the host, where a test that signals every process group reached the owner's whole session (distbench
 # R543's 13 Nov host kill). Such a call runs in a fresh PID namespace: its /proc lists, and its signals reach, only
-# the call's own processes. Linux only, where bubblewrap is a precondition.
-call_ns() { CALL_NS=(); [ "$(uname -s)" != Linux ] || CALL_NS=(bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc); }
+# the call's own processes. Its tmux gets a private TMUX_TMPDIR, so a tmux or bin/tmux-job server the call starts lives
+# in the namespace, not in the host's default server. Linux only, where bubblewrap is a precondition; a factory that
+# already runs in a child PID namespace (NSpid lists more than one id) is already apart from the host.
+call_ns() {
+  CALL_NS=()
+  [ "$(uname -s)" = Linux ] && [ "$(awk '/^NSpid:/ {print NF}' /proc/self/status)" = 2 ] || return 0
+  CALL_NS=(bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc
+    --setenv TMUX_TMPDIR "$(mktemp -d "${TMPDIR:-/tmp}/loam-ns.XXXXXX")" --unsetenv TMUX)
+}
 
 # The Claude worker's command, from bin/claude-account on, into WORKER_CMD; bin/factory.d/probe-native.sh runs the same
 # array. A Loam target keeps the sandboxed shell: no settings tier but the frozen copy, in bypassPermissions. Another
@@ -2681,7 +2688,8 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
     && mv -f "$c.tmp" "$c" || :
 }
 # However the call ends, by exit or by its limit, whatever it left behind, reparented to the wrapper, in its group or
-# carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left
+# carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops (a call in
+# call_ns's PID namespace leaves nothing: what it left is SIGKILLed with the namespace): a child left
 # writing the tree would race the checks and the graders (LOOP.md, Exits). The wrapper ends its children first and
 # call_end logs what it signalled; then call_reap ends whatever is left in the wrapper's or the call's group or carries
 # its tag. The leader is reaped first, since a zombie leader keeps its group alive. A survivor sets CALL_STUCK, and the
@@ -4582,6 +4590,10 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in claude gh git jq python3 uv tmux timeout socat bwrap node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
+  if [ "$(uname -s)" = Linux ]; then
+    bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc true 2> /dev/null \
+      && echo "  PASS bwrap makes the worker's PID namespace" || echo "  FAIL bwrap cannot make a PID namespace (worker and verifier calls need one)"
+  fi
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
   # Another target needs its own executable bin/check (F8).
   if ! target_is_loam; then

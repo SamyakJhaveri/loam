@@ -19,6 +19,7 @@ import unittest
 import unittest.mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+HOST_NS = sys.platform.startswith("linux") and len(open("/proc/self/status").read().split("NSpid:")[1].split("\n")[0].split()) == 1
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 AUDIT = ROOT / "cultivation/marketplace/sam-cc-setup/skills/audit"
 
@@ -30,13 +31,8 @@ n = len(log.read_text().splitlines()) + 1 if log.exists() else 1
 head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 with log.open("a") as f:
     rec = {"argv": sys.argv[1:], "head": head, "prompt": sys.stdin.read()}
-    host = os.environ.get("HOST_PID")
-    if host:
-        try:
-            os.kill(int(host), 0)
-            rec["host_seen"] = True
-        except ProcessLookupError:
-            rec["host_seen"] = False
+    if os.environ.get("HOST_PIDNS"):
+        rec["own_pidns"] = os.readlink("/proc/self/ns/pid") != os.environ["HOST_PIDNS"]
     f.write(json.dumps(rec) + "\\n")
 reply = d / ("claude-reply.%d" % n)
 if not reply.exists():
@@ -221,15 +217,15 @@ class ReviewTests(unittest.TestCase):
         roles = [json.loads(x)["role"] for x in self.read("ledger.jsonl").splitlines()]
         self.assertEqual(roles, ["verifier"])
 
-    @unittest.skipUnless(sys.platform.startswith("linux"), "PID namespaces are Linux only")
-    def test_the_verifier_cannot_signal_a_host_process(self) -> None:
+    @unittest.skipUnless(sys.platform.startswith("linux") and HOST_NS, "a host PID namespace on Linux only: inside a child one the factory does not nest another")
+    def test_the_verifier_runs_in_its_own_pid_namespace(self) -> None:
         # The verifier's Bash runs with the sandbox off, so its call runs in a PID namespace of its own (distbench
-        # R543): signal 0 to this test's own process, a host process, finds no such process.
+        # R543), whose signals cannot reach this test or any other host process.
         self.put("round-1.review.json", review(("high", "real bug")))
         self.replies({"findings": [verdict("reviewer-0", "CONFIRMED")]})
-        self.verify(HOST_PID=str(os.getpid()))
+        self.verify(HOST_PIDNS=os.readlink("/proc/self/ns/pid"))
         [call] = self.claude_calls()
-        self.assertIs(call["host_seen"], False)
+        self.assertIs(call["own_pidns"], True)
 
     def test_no_blocking_finding_makes_no_call(self) -> None:
         self.put("round-1.review.json", review(("low", "nit")))
