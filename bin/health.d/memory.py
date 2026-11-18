@@ -26,7 +26,7 @@ MAX_NOTE_BYTES = 102_400
 MAX_DESCRIPTION = 120
 STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
-TICKS = re.compile(r"`+")
+TICKS = re.compile(r"\\[!-/:-@\[-`{-~]|`+")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
 QUOTE = re.compile(r" {0,3}> ?")
 ITEM = re.compile(r" {0,3}(?:[-+*]|(\d{1,9})[.)])(?=\s|$)")
@@ -98,10 +98,10 @@ def unfenced(lines: list) -> list:
 def blank_code_spans(lines: list, paragraph: list, out: list) -> None:
     """Set out[n] for each (n, start) of the paragraph to lines[n] from start on, with each inline code span blanked to
     spaces. As in CommonMark, a run of n backticks opens a span that the next run of exactly n backticks closes; a run
-    with no such close is literal."""
+    with no such close is literal, and a backslash-escaped character opens none."""
     text, kept, i = "\n".join(lines[n][start:] for n, start in paragraph), [], 0
     while m := TICKS.search(text, i):
-        close = re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
+        close = m.group()[0] == "`" and re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
         if close:
             kept.append(text[i:m.start()] + re.sub(r"[^\n]", " ", text[m.start():close.end()]))
             i = close.end()
@@ -116,7 +116,7 @@ def item_width(rest: str, interrupts: bool) -> int:
     """The width up to a list item's content when rest starts one, else 0. Only a non-empty item, and for a numbered
     one only one starting at 1, interrupts a paragraph."""
     m = ITEM.match(rest)
-    if not m:
+    if not m or THEMATIC.match(rest):
         return 0
     after = rest[m.end():]
     if interrupts and (not after.strip() or (m.group(1) and int(m.group(1)) != 1)):
@@ -130,13 +130,9 @@ def prose(lines: list, outside: list) -> list:
     for any other line. By CommonMark's block rules, each line first matches the open quotes (`>`) and list items
     (indented to the item's content), then may open new ones; a paragraph ends at a blank or fenced line, a heading, a
     thematic break, a setext underline or a new container, and a line that matches fewer containers but starts no block
-    continues it (lazy continuation)."""
+    continues it (lazy continuation). An indented code line outside a paragraph is kept whole on its own."""
     out, containers, paragraph = [""] * len(lines), [], []
     for n, line in enumerate(lines):
-        if not outside[n]:
-            blank_code_spans(lines, paragraph, out)
-            paragraph = []
-            continue
         pos, matched = 0, 0
         for c in containers:
             if c == ">" and (q := QUOTE.match(line, pos)):
@@ -147,6 +143,11 @@ def prose(lines: list, outside: list) -> list:
                 break
             matched += 1
         rest = line[pos:]
+        if not outside[n]:
+            blank_code_spans(lines, paragraph, out)
+            paragraph = []
+            del containers[matched:]
+            continue
         if paragraph and matched < len(containers) and rest.strip() and not (
                 QUOTE.match(rest) or ATX.match(rest) or THEMATIC.match(rest) or item_width(rest, False)):
             paragraph.append((n, pos))
@@ -156,12 +157,15 @@ def prose(lines: list, outside: list) -> list:
         while (q := QUOTE.match(line, pos)) or (width := item_width(line[pos:], bool(paragraph) and not changed)):
             containers.append(">" if q else width)
             pos, changed = q.end() if q else pos + width, True
-        rest = line[pos:]
-        leaf = ATX.match(rest) or THEMATIC.match(rest) or SETEXT.match(rest)
+        rest, open_paragraph = line[pos:], paragraph and not changed
+        code = rest.startswith("    ") and rest.strip() and not open_paragraph
+        leaf = code or ATX.match(rest) or THEMATIC.match(rest) or (open_paragraph and SETEXT.match(rest))
         if changed or leaf or not rest.strip():
             blank_code_spans(lines, paragraph, out)
             paragraph = []
-        if ATX.match(rest):
+        if code:
+            out[n] = rest
+        elif ATX.match(rest):
             blank_code_spans(lines, [(n, pos)], out)
         elif rest.strip() and not leaf:
             paragraph.append((n, pos))
@@ -229,7 +233,7 @@ def lint_note(note: dict, stems: set) -> tuple:
         for label, pattern in SECRETS:
             if pattern.search(line):
                 fails.append(f"FAIL secret {f}:{n}: line matches the pattern of {label}")
-    body = note["lines"][note["body"]:]
+    body = [line.expandtabs(4) for line in note["lines"][note["body"]:]]
     outside = unfenced(body)
     history = False
     for n, line, ok, text in zip(range(note["body"] + 1, len(note["lines"]) + 1), body, outside, prose(body, outside)):
