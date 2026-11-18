@@ -21,6 +21,7 @@ ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcrip
 ```
 
 That covers the legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`) layouts. For each candidate, read the first JSONL line. Take the file whose `message.content[0].text` contains the conversation's opening user prompt. If none matches, pass a tight digest of the session instead.
+Print that transcript's owner words and auto-mode classifier refusals, with line numbers, by `python3 <this file's folder>/words-and-refusals.py <transcript> <transcript folder>/subagents/*.jsonl`, and give reviewers its output as the owner's words: an entry is his only when its `origin.kind` is exactly "human", never when the origin is missing.
 
 ## 2. Spawn three reviewers
 

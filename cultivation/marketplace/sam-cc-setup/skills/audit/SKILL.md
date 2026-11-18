@@ -70,7 +70,7 @@ Copy this checklist into your task list and tick each item; the audit is not don
 ## Gather
 
 - **Target:** the files, diffs, plans and chat claims under audit, plus what they depend on. Copy chat claims into a file, and commit the target or copy it, so every reviewer reads the same version; give the commit or path in each brief.
-- **The owner's words:** his requests and later corrections that led to this work, quoted verbatim into a file. These, not your summary of them, are the goal every agent measures against.
+- **The owner's words:** his requests and later corrections that led to this work, quoted verbatim into a file. These, not your summary of them, are the goal every agent measures against. From a Claude Code transcript, take them with `python3 ${CLAUDE_SKILL_DIR}/../reflect/words-and-refusals.py <transcript> [<subagent transcripts>]`: it prints only entries whose `origin.kind` is exactly "human", plus each auto-mode classifier refusal joined to its tool call.
 - **Sources:** the files, data, papers and docs the work rests on, including the copies the project keeps in the repo (search it before the web).
 - **Constraints:** the project's recorded rulings and permission rules that bear on the work, by title and path.
 - **Evidence folder:** where the project keeps evidence, or the scratchpad; every brief, review, verdict and the claim file go there.
