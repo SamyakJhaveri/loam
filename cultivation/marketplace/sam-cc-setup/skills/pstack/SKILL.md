@@ -1,6 +1,6 @@
 ---
 name: pstack
-description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done."
+description: "Pick a pstack method before a task: a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review or a ruling on its findings, taking over or leading agents, a correction from the owner you have had before, a hard multi-part job, or calling work done."
 allowed-tools: Bash(bash *pstack-path.sh)
 ---
 pstack folder `<P>`: !`bash ${CLAUDE_SKILL_DIR}/pstack-path.sh`
@@ -13,7 +13,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 - Never call the Skill tool on a `pstack:` skill. Never use setup-pstack, poteto-help, sharpen, in-your-own-words or make-bot-ui.
 - In the main session, build work that fits a ticket (one behavior, done checks you can write before the code) goes to the project's factory lane when it has one (its `AGENTS.md` or worker docs name it): write the ticket in the lane's form and queue it. Build attended only what the lane cannot run, and say why in the brief.
 - A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to the factory lane as a ticket whose `skills:` line names it when the work fits one, else to one `worker`; `audit` is the exception, run by the agent that did the work. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
-- poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for.
+- poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for. In its session-pickup playbook the prior trail is authoritative for decisions and intent only; re-read live state (whether a session or job is alive, balances, deadlines, CI, who sent a message) at its source before it becomes a claim or an ask.
 - When two rows fit, take the higher row, and also read every principle whose line fits.
 
 | Situation (broad to narrow) | Skill |

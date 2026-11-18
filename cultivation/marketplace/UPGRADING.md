@@ -3,6 +3,21 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.40 the pstack router fires on a repeated owner correction; reflect reviewers read one frozen transcript
+
+From the distbench /reflect of 17 November 2026, rows A3, A7 and A8, accepted by the owner at 22:17 PST that day.
+The `pstack` router's description also names a correction from the owner the agent has had before, so its "same mistake corrected twice" row can fire (a ninth plain-words correction got only a memory sentence); the sam-cc-setup listing budget in `bin/check` rises from 423 to 435 tokens, the measured weight.
+Its poteto-mode line adds that in the session-pickup playbook the prior trail is authoritative for decisions and intent only, and live state is re-read at its source before it becomes a claim or an ask; it narrows nothing in the poteto-mode ruling.
+The owner copy of `reflect` copies the transcript into the findings folder in step 1 and gives every reviewer and the synthesizer the copy's path, `sha256sum` and line count, so all read the same lines (the 17 Nov reviewers read a transcript that grew from 1103 to about 1193 lines).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.39 the pstack router fires at a takeover and on review rulings
+
+The `pstack` router's description now also names a ruling on review findings and taking over or leading agents, the two moments a distbench lead skipped the router (the distbench /reflect of 17 November 2026, item R13, accepted by the owner that day); the sam-cc-setup listing budget in `bin/check` rises from 408 to 423 tokens for it.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
 
 The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.
