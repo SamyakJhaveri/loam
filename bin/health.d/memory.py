@@ -26,7 +26,7 @@ MAX_NOTE_BYTES = 102_400
 MAX_DESCRIPTION = 120
 STUB = re.compile(r"MOVED TO \[\[[^\[\]]+\]\]")
 LINK = re.compile(r"\[\[([^\[\]]+)\]\]")
-TICKS = re.compile(r"\\[!-/:-@\[-`{-~]|`+")
+OPENER = re.compile(r"\\[!-/:-@\[-`{-~]|`+")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
 QUOTE = re.compile(r" {0,3}> ?")
 ITEM = re.compile(r" {0,3}(?:[-+*]|(\d{1,9})[.)])(?=\s|$)")
@@ -100,7 +100,7 @@ def blank_code_spans(lines: list, paragraph: list, out: list) -> None:
     spaces. As in CommonMark, a run of n backticks opens a span that the next run of exactly n backticks closes; a run
     with no such close is literal, and a backslash-escaped character opens none."""
     text, kept, i = "\n".join(lines[n][start:] for n, start in paragraph), [], 0
-    while m := TICKS.search(text, i):
+    while m := OPENER.search(text, i):
         close = m.group()[0] == "`" and re.compile(f"(?<!`){m.group()}(?!`)").search(text, m.end())
         if close:
             kept.append(text[i:m.start()] + re.sub(r"[^\n]", " ", text[m.start():close.end()]))
