@@ -2568,14 +2568,15 @@ worker_skill_settings() { if target_is_loam; then printf '%s\n' "$RUN/frozen/wor
 # runs on the host, where a test that signals every process group reached the owner's whole session (distbench
 # R543's 13 Nov host kill). Such a call runs in a fresh PID namespace: its /proc lists, and its signals reach, only
 # the call's own processes. Its tmux gets a private TMUX_TMPDIR, so a tmux or bin/tmux-job server the call starts lives
-# in the namespace, not in the host's default server; one directory per run (a socket path under $RUN would pass
-# tmux's 107-byte limit). Linux only, where bubblewrap is a precondition: a host where it cannot make the namespace
+# in the namespace, not in the host's default server; one directory per run, named by a hash of $RUN's full path (a
+# socket path under $RUN would pass tmux's 107-byte limit). Linux only, where bubblewrap is a precondition: a host where it cannot make the namespace
 # fails the call rather than run it unwrapped.
 call_ns() {
   CALL_NS=()
   [ "$(uname -s)" = Linux ] || return 0
-  local t="${TMPDIR:-/tmp}/loam-ns-${RUN##*/}"
-  mkdir -p -m 700 "$t"
+  local t
+  t="${TMPDIR:-/tmp}/loam-ns-$(printf '%s' "$RUN" | sha256sum | cut -c1-16)"
+  mkdir -p -m 700 "$t" && chmod 700 "$t"
   CALL_NS=(bwrap --dev-bind / / --unshare-pid --die-with-parent --proc /proc --setenv TMUX_TMPDIR "$t" --unsetenv TMUX)
 }
 

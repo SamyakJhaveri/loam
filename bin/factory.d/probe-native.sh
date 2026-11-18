@@ -34,9 +34,10 @@ worker_cmd
 # SIGKILL to every process group outside the shell's own ancestry must end its inner sentinel and leave this one alive.
 setsid tail -f /dev/null > /dev/null 2>&1 < /dev/null &
 host=$!
+call=
 trap 'kill "$host" 2> /dev/null' EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap '[ -z "$call" ] || { kill "$call" 2> /dev/null; wait "$call"; }; exit 130' INT
+trap '[ -z "$call" ] || { kill "$call" 2> /dev/null; wait "$call"; }; exit 143' TERM
 hostns=$(readlink /proc/self/ns/pid)
 cat > "$work/prompt.md" <<EOF
 This is a probe of your shell. Run each of these six commands in its own Bash call, in this order, exactly as written,
@@ -85,8 +86,11 @@ EOF
 
 out="$work/out.jsonl"
 echo "probe-native: running the worker command in $clone; stream in $out" >&2
-( cd "$clone" && "${WORKER_CMD[@]}" < "$work/prompt.md" > "$out" 2> "$work/stderr" ) \
-  || echo "probe-native: the call exited non-zero; see $work/stderr" >&2
+# In the background, so an INT or TERM trap runs at once and ends the call (bash defers traps until a foreground child ends).
+( cd "$clone" && exec "${WORKER_CMD[@]}" < "$work/prompt.md" > "$out" 2> "$work/stderr" ) &
+call=$!
+wait "$call" || echo "probe-native: the call exited non-zero; see $work/stderr" >&2
+call=
 
 # Each Bash call's command and the text of its tool result, joined by tool_use id.
 results=$(jq -rs '
