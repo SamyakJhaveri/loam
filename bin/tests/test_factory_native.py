@@ -207,10 +207,11 @@ class NativeShellTests(unittest.TestCase):
     def test_loam_target_settings_and_argv_match_the_pre_u3_factory(self) -> None:
         if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", BASE], capture_output=True).returncode:
             self.skipTest(f"{BASE} is not in this clone (shallow)")
-        # The reviewer prompt is data the factory reads, not factory code, so the reference reads this checkout's copy and
-        # the grader stdin below compares the evidence alone.
+        # The reviewer prompt and schema are data the factory reads, not factory code, so the reference reads this
+        # checkout's copies and the grader stdin below compares the evidence alone.
         reference = self.h.factory("loam-old", BASE)
         shutil.copy(ROOT / PLUGIN / "agents/reviewer.md", reference / PLUGIN / "agents/reviewer.md")
+        shutil.copy(ROOT / "bin/factory.d/reviewer.schema.json", reference / "bin/factory.d/reviewer.schema.json")
         # Both API-billed: the reference's calls always carried --max-budget-usd, which no call carries since 13 Nov 2026.
         old = self.h.round_one(reference, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
@@ -309,6 +310,46 @@ class NativeShellTests(unittest.TestCase):
                          [("worker", "claude-opus-5-5"), ("reviewer", "claude-fable-5-2")])
         # A reviewer served the model it asked for raises no off-model alert.
         self.assertNotIn("off-model", (self.h.run / "factory.log").read_text())
+
+    def test_reviewer_ask_is_frozen_and_follows_the_rubric(self) -> None:
+        ask = self.h.top / "ask.md"
+        text = "Answer `answers[\"Q\"]` with yes or no.\n"
+        ask.write_text(text)
+        # The file changes after the freeze, before the reviewer call: the call still reads the frozen text, as a
+        # resumed run would.
+        proc = self.h.sourced(self.new, 'freeze && worker_round 1 && echo "an edit after the freeze" > "$FACTORY_REVIEWER_ASK"'
+                              ' && run_review 1; echo "done:$?"', loam=False, FACTORY_REVIEWER_ASK=str(ask))
+        self.assertIn("done:", proc.stdout, proc.stderr)
+        grader = self.h.calls()[1]
+        self.assertEqual((self.h.run / "frozen/reviewer-ask.md").read_text(), text)
+        self.assertIn("  reviewer-ask.md\n", (self.h.run / "frozen/sha256").read_text())
+        rubric = (self.h.run / "frozen/reviewer.md").read_text()
+        # A fixed note, one paragraph just before the rubric's evidence boundary, lets the reviewer answer the
+        # questions; the questions themselves follow the rubric, fenced as evidence.
+        boundary = rubric.index("\nEverything after this section is evidence") + 1
+        head, rest = rubric[:boundary], rubric[boundary:]
+        stdin = grader["stdin"]
+        self.assertTrue(stdin.startswith(head), stdin[:400])
+        note, sep, after = stdin[len(head):].partition("\n\n")
+        self.assertEqual(sep, "\n\n")
+        self.assertNotIn("\n", note)
+        self.assertIn('"## Questions from the target"', note)
+        self.assertIn("`answers`", note)
+        fence = "~~~~~~~~~~~~ evidence"
+        self.assertTrue(after.startswith(rest + "\n\n## Questions from the target\n\n" + fence + "\n" + text + "\n" + fence
+                                         + "\n\n\n## Ticket\n"), after[:400])
+        self.assertEqual(stdin.count(note), 1)
+        # The reply may carry string answers; nothing requires them.
+        schema = json.loads((self.h.run / "frozen/reviewer.schema.json").read_text())
+        self.assertEqual(schema["properties"]["answers"],
+                         {"type": "object", "additionalProperties": {"type": "string"}})
+        self.assertNotIn("answers", schema["required"])
+        # Unset, no file is frozen and the reviewer's prompt is the rubric, then the ticket.
+        plain = self.h.round_one(self.new, loam=False)
+        self.assertFalse((self.h.run / "frozen/reviewer-ask.md").exists())
+        self.assertTrue(plain["grader"]["stdin"].startswith(rubric + "\n\n## Ticket\n"))
+        self.assertNotIn(note, plain["grader"]["stdin"])
+        self.assertNotIn("## Questions from the target", plain["grader"]["stdin"])
 
     def test_lessons_file_is_frozen_and_ends_each_round_prompt(self) -> None:
         lessons = self.h.top / "LESSONS.md"

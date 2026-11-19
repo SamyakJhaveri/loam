@@ -16,7 +16,8 @@
       }
     },
     "unverified": { "type": "array", "items": { "type": "string" } },
-    "verdict": { "enum": ["merge", "fix"] }
+    "verdict": { "enum": ["merge", "fix"] },
+    "answers": { "type": "object", "additionalProperties": { "type": "string" } }
   },
   "required": ["findings", "verdict"]
 }
