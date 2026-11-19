@@ -15,6 +15,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 - A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to the factory lane as a ticket whose `skills:` line names it when the work fits one, else to one `worker`; `audit` is the exception, run by the agent that did the work. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
 - poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for.
 - When two rows fit, take the higher row, and also read every principle whose line fits.
+- Two triggers apply beside any higher row: a change to what processes can see (PID namespace, env, PATH, cwd) also takes blast-radius, and a failure a memory already records happening again also takes correct.
 
 | Situation (broad to narrow) | Skill |
 |---|---|
