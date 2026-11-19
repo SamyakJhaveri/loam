@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.44 reflect: run the fan-out where agents can spawn
+
+The `reflect` owner copy's section 2 now says to run the reviewer fan-out from a session that can spawn agents.
+A `worker` cannot (its `disallowedTools` lists Agent), so a reflect delegated to one runs as a single reader.
+The `pstack` router no longer hands `reflect` to a `worker`: like `audit`, it is an exception to the one-worker rule for skills that spawn agents.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.43 pstack router: repeated failures and process visibility
 
 The `pstack` router's "same mistake corrected twice" row now also fires when a failure a memory already records happens again.
