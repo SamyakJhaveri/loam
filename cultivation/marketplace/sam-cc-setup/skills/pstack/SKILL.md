@@ -29,13 +29,13 @@ If the folder line above is empty or not an absolute path (you read this file di
 | How or why code works | how, why (spawns) |
 | A multi-step change | principle-sequence-verifiable-units |
 | A measured number | `<S>/principle-explain-the-number`; benchmark-checklist for a timing |
-| Shared, retried or concurrent code | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
+| Shared, retried or concurrent code, or a change to what processes can see (PID namespace, env, PATH, cwd) | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
 | Merged code changed what a formal-verification skill models | maintain-formal-verification-skill |
 | Review of finished non-trivial work | `<S>/audit` (spawns; run it yourself, never through a worker; every role only when the owner asked, else the project's review rules size it) |
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | `<S>/reflect` (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
-| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
+| The same mistake corrected twice, a failure memory already records happens again, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
 | Repeated manual steps or owner corrections to mine | automate-me (spawns; in an agent run, draft its output in the repo, never under `~/`) |
 | Before saying done | principle-prove-it-works |
 
