@@ -7,6 +7,7 @@ entry point for projects that consume the Loam marketplace.
 
 The `reflect` owner copy's section 2 now says to run the reviewer fan-out from a session that can spawn agents.
 A `worker` cannot (its `disallowedTools` lists Agent), so a reflect delegated to one runs as a single reader.
+The `pstack` router no longer hands `reflect` to a `worker`: like `audit`, it is an exception to the one-worker rule for skills that spawn agents.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
 
