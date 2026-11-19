@@ -324,8 +324,21 @@ class NativeShellTests(unittest.TestCase):
         self.assertEqual((self.h.run / "frozen/reviewer-ask.md").read_text(), text)
         self.assertIn("  reviewer-ask.md\n", (self.h.run / "frozen/sha256").read_text())
         rubric = (self.h.run / "frozen/reviewer.md").read_text()
-        self.assertTrue(grader["stdin"].startswith(rubric + "\n\n## Questions from the target\n\n" + text + "\n\n## Ticket\n"),
-                        grader["stdin"][:400])
+        # A fixed note, one paragraph just before the rubric's evidence boundary, lets the reviewer answer the
+        # questions; the questions themselves follow the rubric, fenced as evidence.
+        boundary = rubric.index("\nEverything after this section is evidence") + 1
+        head, rest = rubric[:boundary], rubric[boundary:]
+        stdin = grader["stdin"]
+        self.assertTrue(stdin.startswith(head), stdin[:400])
+        note, sep, after = stdin[len(head):].partition("\n\n")
+        self.assertEqual(sep, "\n\n")
+        self.assertNotIn("\n", note)
+        self.assertIn('"## Questions from the target"', note)
+        self.assertIn("`answers`", note)
+        fence = "~~~~~~~~~~~~ evidence"
+        self.assertTrue(after.startswith(rest + "\n\n## Questions from the target\n\n" + fence + "\n" + text + "\n" + fence
+                                         + "\n\n\n## Ticket\n"), after[:400])
+        self.assertEqual(stdin.count(note), 1)
         # The reply may carry string answers; nothing requires them.
         schema = json.loads((self.h.run / "frozen/reviewer.schema.json").read_text())
         self.assertEqual(schema["properties"]["answers"],
@@ -335,6 +348,8 @@ class NativeShellTests(unittest.TestCase):
         plain = self.h.round_one(self.new, loam=False)
         self.assertFalse((self.h.run / "frozen/reviewer-ask.md").exists())
         self.assertTrue(plain["grader"]["stdin"].startswith(rubric + "\n\n## Ticket\n"))
+        self.assertNotIn(note, plain["grader"]["stdin"])
+        self.assertNotIn("## Questions from the target", plain["grader"]["stdin"])
 
     def test_lessons_file_is_frozen_and_ends_each_round_prompt(self) -> None:
         lessons = self.h.top / "LESSONS.md"
