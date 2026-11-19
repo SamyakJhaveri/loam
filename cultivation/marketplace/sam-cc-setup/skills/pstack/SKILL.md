@@ -15,6 +15,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 - A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to the factory lane as a ticket whose `skills:` line names it when the work fits one, else to one `worker`; `audit` is the exception, run by the agent that did the work. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
 - poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for.
 - When two rows fit, take the higher row, and also read every principle whose line fits.
+- Two triggers apply beside any higher row: a change to what processes can see (PID namespace, env, PATH, cwd) also takes blast-radius, and a failure a memory already records happening again also takes correct.
 
 | Situation (broad to narrow) | Skill |
 |---|---|
@@ -29,13 +30,13 @@ If the folder line above is empty or not an absolute path (you read this file di
 | How or why code works | how, why (spawns) |
 | A multi-step change | principle-sequence-verifiable-units |
 | A measured number | `<S>/principle-explain-the-number`; benchmark-checklist for a timing |
-| Shared, retried or concurrent code | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
+| Shared, retried or concurrent code, or a change to what processes can see (PID namespace, env, PATH, cwd) | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
 | Merged code changed what a formal-verification skill models | maintain-formal-verification-skill |
 | Review of finished non-trivial work | `<S>/audit` (spawns; run it yourself, never through a worker; every role only when the owner asked, else the project's review rules size it) |
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | `<S>/reflect` (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
-| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
+| The same mistake corrected twice, a failure memory already records happens again, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
 | Repeated manual steps or owner corrections to mine | automate-me (spawns; in an agent run, draft its output in the repo, never under `~/`) |
 | Before saying done | principle-prove-it-works |
 

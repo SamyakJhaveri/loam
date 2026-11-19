@@ -3,6 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.43 pstack router: repeated failures and process visibility
+
+The `pstack` router's "same mistake corrected twice" row now also fires when a failure a memory already records happens again.
+Its "Shared, retried or concurrent code" row, which leads to blast-radius, now also fires on a change to what processes can see (PID namespace, env, PATH, cwd).
+Both came from the distbench /reflect of session 2947be22, accepted by the owner on 18 November 2026.
+The version skips 0.9.39 to 0.9.42, which open pull requests 800, 804, 806, 807 and 808 hold.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.38 owner copies of principle-explain-the-number and reflect
 
 The plugin now ships owner copies of two pstack 0.15.36 skills, `skills/principle-explain-the-number/` and `skills/reflect/`, and the `pstack` router's "A measured number" row, its principle line and its "A long task or a batch of runs landed" row read them as `<S>/<name>`; their links into pstack now name `<P>`, the pstack folder.
